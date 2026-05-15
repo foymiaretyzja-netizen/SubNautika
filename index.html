@@ -12,8 +12,7 @@
             height: 100%;
             overflow: hidden;
             font-family: 'Segoe UI', sans-serif;
-            /* Realistic atmospheric sky */
-            background: linear-gradient(to bottom, #4a769d 0%, #9cb9cc 50%, #d1e1e9 100%);
+            background-color: #4a769d; /* Fallback */
         }
 
         #canvas-container {
@@ -190,55 +189,70 @@
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         
-        // Setup Camera
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
-        camera.position.set(0, 35, 140);
-        camera.lookAt(0, 10, -100);
+        // --- SKYBOX FIX ---
+        // We create a canvas gradient and use it as the scene background to prevent "box" edges
+        const canvas = document.createElement('canvas');
+        canvas.width = 2;
+        canvas.height = 512;
+        const context = canvas.getContext('2d');
+        const gradient = context.createLinearGradient(0, 0, 0, 512);
+        gradient.addColorStop(0, '#4a769d');   // Top Sky
+        gradient.addColorStop(0.5, '#9cb9cc'); // Mid Sky
+        gradient.addColorStop(1, '#d1e1e9');   // Horizon
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 2, 512);
+        
+        const skyTexture = new THREE.CanvasTexture(canvas);
+        scene.background = skyTexture;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
+        camera.position.set(0, 45, 160);
+        camera.lookAt(0, 15, -100);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // Fog helps blend the water into the horizon
+        scene.fog = new THREE.Fog(0xd1e1e9, 100, 1000);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         scene.add(ambientLight);
-        const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-        sun.position.set(50, 100, 50);
+        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+        sun.position.set(10, 100, -50);
         scene.add(sun);
 
-        // --- THE WATER (Murky Blue/Cyan) ---
-        const waterGeo = new THREE.PlaneGeometry(1500, 1500, 128, 128);
+        // --- DARK BLUE OCEAN ---
+        const waterGeo = new THREE.PlaneGeometry(2000, 2000, 128, 128);
         waterGeo.rotateX(-Math.PI / 2);
 
         const waterMat = new THREE.MeshPhongMaterial({
-            color: 0x003d45,      // Dark Murky Cyan
-            emissive: 0x001a1d,   // Deep base
-            specular: 0x111111,
-            shininess: 100,
+            color: 0x001a33,      // Very Dark Blue
+            emissive: 0x000811,   // Deep base
+            specular: 0x222222,
+            shininess: 50,
             transparent: true,
-            opacity: 0.95
+            opacity: 0.98
         });
 
         const water = new THREE.Mesh(waterGeo, waterMat);
         scene.add(water);
 
-        // --- THE CLOUDS (Flat Perlin Layer) ---
-        const cloudGeo = new THREE.PlaneGeometry(2000, 2000, 64, 64);
-        cloudGeo.rotateX(Math.PI / 2); // Face downward
-        
+        // --- CLOUDS ---
+        const cloudGeo = new THREE.PlaneGeometry(3000, 3000, 32, 32);
+        cloudGeo.rotateX(Math.PI / 2);
         const cloudMat = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
-            opacity: 0.4,
+            opacity: 0.25,
             side: THREE.DoubleSide
         });
-
         const clouds = new THREE.Mesh(cloudGeo, cloudMat);
-        clouds.position.y = 400; // High in the sky
+        clouds.position.y = 600;
         scene.add(clouds);
 
-        // UI Functions
+        // UI Logic
         let isPlayMenuOpen = false;
         function togglePlayMenu() {
             const mainMenu = document.getElementById('mainMenu');
@@ -251,31 +265,29 @@
         function showNotAccessible() { alert('Not accessible yet!'); }
         function startGame() { alert('Loading Survival...'); }
 
-        // Animation logic
+        // Animation loop
         let time = 0;
         function animate() {
             requestAnimationFrame(animate);
-            time += 0.008; // Increased speed - no more slime!
+            time += 0.003; // SLOWED DOWN: Much calmer rolling waves
 
-            // Animate Water
             const waterPos = waterGeo.attributes.position;
             for (let i = 0; i < waterPos.count; i++) {
                 const x = waterPos.getX(i);
                 const z = waterPos.getZ(i);
                 
-                // Combine two noise layers for "choppier" water
-                const noise1 = simplex.noise3D(x * 0.006, z * 0.006, time) * 12;
-                const noise2 = simplex.noise3D(x * 0.015, z * 0.015, time * 1.5) * 4;
+                // Perlin math for rolling waves
+                const noise1 = simplex.noise3D(x * 0.004, z * 0.004, time) * 15;
+                const noise2 = simplex.noise3D(x * 0.01, z * 0.01, time * 1.2) * 5;
                 
                 waterPos.setY(i, noise1 + noise2);
             }
             waterPos.needsUpdate = true;
             waterGeo.computeVertexNormals();
 
-            // Animate Clouds (Slow drift)
-            clouds.position.x = Math.sin(time * 0.1) * 50;
-            clouds.position.z += 0.1;
-            if(clouds.position.z > 500) clouds.position.z = -500;
+            // Cloud movement
+            clouds.position.z += 0.05;
+            if(clouds.position.z > 1000) clouds.position.z = -1000;
 
             renderer.render(scene, camera);
         }
