@@ -6,9 +6,9 @@
     <title>Subnautika - Title Screen</title>
     <style>
         :root {
-            --sub-blue: rgba(0, 162, 255, 0.6);
-            --sub-glow: rgba(0, 225, 255, 0.8);
-            --ui-bg: rgba(0, 40, 80, 0.7);
+            --sub-blue: #00d4ff;
+            --sub-dark: rgba(0, 20, 40, 0.8);
+            --sub-glow: 0 0 15px rgba(0, 212, 255, 0.6);
         }
 
         body, html {
@@ -17,20 +17,21 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #000;
+            background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 40%, #003366 100%);
+            font-family: 'Segoe UI', sans-serif;
         }
 
-        /* Wave Background */
-        #waterCanvas {
+        canvas {
             position: absolute;
-            top: 0;
+            bottom: 0;
             left: 0;
-            z-index: 0;
+            width: 100%;
+            height: 60%; /* Ocean takes up the bottom 60% */
+            z-index: 1;
         }
 
-        /* Main Wrapper */
-        #ui-wrapper {
+        /* UI Layer */
+        #ui-layer {
             position: relative;
             z-index: 10;
             width: 100%;
@@ -39,188 +40,193 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        /* Logo Styling */
         .logo {
-            max-width: 600px;
-            margin-bottom: 50px;
-            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
+            width: 500px;
+            margin-bottom: 40px;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
             transition: transform 0.8s ease;
         }
 
-        /* Button Containers */
-        .menu-container {
+        .button-group {
             display: flex;
-            gap: 20px;
-            transition: transform 0.8s ease, opacity 0.8s ease;
+            flex-direction: column;
+            gap: 15px;
+            transition: transform 0.8s ease;
         }
 
-        /* Subnautica Style Buttons */
         .btn {
-            background: var(--ui-bg);
+            background: var(--sub-dark);
             border: 2px solid var(--sub-blue);
             color: white;
-            padding: 15px 40px;
-            font-size: 1.2rem;
+            width: 280px;
+            padding: 12px 25px;
+            font-size: 1.1rem;
             text-transform: uppercase;
             letter-spacing: 2px;
             cursor: pointer;
             border-radius: 50px;
-            position: relative;
-            overflow: hidden;
-            transition: 0.3s;
             display: flex;
             align-items: center;
-            min-width: 200px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            transition: 0.3s;
+            box-shadow: var(--sub-glow);
         }
 
         .btn:hover {
             background: var(--sub-blue);
-            box-shadow: 0 0 20px var(--sub-glow);
+            color: #000;
+            box-shadow: 0 0 25px var(--sub-blue);
             transform: scale(1.05);
         }
 
         .btn::before {
-            content: '○';
+            content: '';
+            width: 12px;
+            height: 12px;
+            border: 2px solid currentColor;
+            border-radius: 50%;
             margin-right: 15px;
-            font-weight: bold;
         }
 
-        /* Game Mode Panel (Hidden initially) */
-        #gamemode-panel {
+        /* Play Menu Panel */
+        #play-menu {
             position: absolute;
             right: -500px;
             top: 50%;
             transform: translateY(-50%);
             width: 400px;
-            background: rgba(0, 100, 200, 0.4);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--sub-blue);
-            padding: 20px;
+            background: rgba(0, 40, 80, 0.8);
+            backdrop-filter: blur(15px);
+            border: 2px solid var(--sub-blue);
+            border-radius: 15px;
+            padding: 25px;
             color: white;
-            border-radius: 10px;
-            transition: right 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: right 0.8s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        .mode-card {
+        .mode-option {
             background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border-left: 5px solid var(--sub-glow);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid var(--sub-blue);
+            cursor: pointer;
         }
 
-        .mode-card h3 { margin: 0 0 5px 0; color: #0cf; }
-        .mode-card p { margin: 0; font-size: 0.9rem; opacity: 0.9; }
+        .mode-option h3 { margin: 0 0 5px 0; color: var(--sub-blue); }
+        .mode-option p { margin: 0; font-size: 0.9rem; opacity: 0.8; }
 
-        /* State Classes */
-        .state-selecting-mode #ui-wrapper {
+        /* Transition State */
+        .menu-active #ui-layer {
             align-items: flex-start;
             padding-left: 10%;
         }
 
-        .state-selecting-mode #gamemode-panel {
+        .menu-active #play-menu {
             right: 10%;
         }
     </style>
 </head>
 <body>
 
-    <canvas id="waterCanvas"></canvas>
+    <canvas id="ocean"></canvas>
 
-    <div id="ui-wrapper">
-        <img src="textures/Subnautika.png" alt="Subnautika Logo" class="logo">
+    <div id="ui-layer">
+        <img src="textures/Subnautika.png" alt="SUBNAUTIKA" class="logo">
         
-        <div class="menu-container" id="main-menu">
-            <button class="btn" onclick="openPlayMenu()">Play</button>
-            <button class="btn" onclick="notAccessible()">Options</button>
-            <button class="btn" onclick="notAccessible()">Quit</button>
+        <div class="button-group">
+            <button class="btn" onclick="showPlayMenu()">Play</button>
+            <button class="btn" onclick="alert('Not accessible yet!')">Options</button>
+            <button class="btn" onclick="alert('Not accessible yet!')">Quit</button>
         </div>
     </div>
 
-    <div id="gamemode-panel">
-        <h2 style="border-bottom: 1px solid white; padding-bottom: 10px;">New Game</h2>
-        <div class="mode-card" style="cursor: pointer;" onclick="alert('Starting Survival...')">
+    <div id="play-menu">
+        <h2 style="margin-top: 0;">Select Gamemode</h2>
+        <div class="mode-option" onclick="alert('Starting Survival...')">
             <h3>Survival</h3>
-            <p>Crash land in a dangerous environment, scavenge resources and manage oxygen levels to survive.</p>
-        </div>
-        <div class="mode-card" style="opacity: 0.5; cursor: not-allowed;">
-            <h3>Freedom</h3>
-            <p>(Locked) Survival, but without hunger or thirst.</p>
-        </div>
-        <div class="mode-card" style="opacity: 0.5; cursor: not-allowed;">
-            <h3>Hardcore</h3>
-            <p>(Locked) Survival mode with only one life. No O2 alerts.</p>
+            <p>Gather resources, manage oxygen, and explore the depths. The standard way to play.</p>
         </div>
     </div>
 
     <script>
-        // --- Wave Math Logic ---
-        const canvas = document.getElementById('waterCanvas');
+        const canvas = document.getElementById('ocean');
         const ctx = canvas.getContext('2d');
 
         let width, height;
-        let offset = 0;
+        let time = 0;
 
         function resize() {
             width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
+            height = canvas.height = window.innerHeight * 0.6;
         }
 
         window.addEventListener('resize', resize);
         resize();
 
-        function drawWaves() {
-            ctx.clearRect(0, 0, width, height);
-            
-            // Create a deep ocean gradient
-            let gradient = ctx.createLinearGradient(0, 0, 0, height);
-            gradient.addColorStop(0, '#001a33');
-            gradient.addColorStop(1, '#00050a');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, width, height);
+        // 3D Grid Constants
+        const cols = 30;
+        const rows = 20;
+        const spacing = 60;
 
-            drawWave(40, 0.005, 0.02, 'rgba(0, 150, 255, 0.1)');
-            drawWave(30, 0.01, 0.04, 'rgba(0, 200, 255, 0.15)');
-            drawWave(20, 0.015, 0.03, 'rgba(0, 100, 200, 0.2)');
-
-            offset += 0.01;
-            requestAnimationFrame(drawWaves);
+        function project(x, y, z) {
+            // Basic 3D to 2D projection
+            // x, y are grid positions, z is the calculated height
+            const perspective = 400;
+            const scale = perspective / (perspective + y); 
+            const sx = (x * spacing * scale) + (width / 2);
+            const sy = (z * scale) + (y * 15); // Perspective "tilt"
+            return { x: sx, y: sy };
         }
 
-        function drawWave(amplitude, frequency, speed, color) {
-            ctx.beginPath();
-            ctx.moveTo(0, height / 2);
-            
-            for (let x = 0; x < width; x++) {
-                // Wave Math: y = sin(x * freq + time) * amp
-                let y = Math.sin(x * frequency + (offset * speed * 10)) * amplitude;
-                
-                // Add a secondary wave to break repetition
-                y += Math.cos(x * frequency * 0.5 + (offset * speed * 5)) * (amplitude / 2);
-                
-                ctx.lineTo(x, (height / 1.5) + y);
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            time += 0.02;
+
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
+            ctx.lineWidth = 1;
+
+            for (let r = 0; r < rows; r++) {
+                ctx.beginPath();
+                for (let c = -cols; c <= cols; c++) {
+                    // Ocean Math: Summing multiple sine waves for "3D" complexity
+                    const x = c;
+                    const y = r * 2;
+                    const z = Math.sin(x * 0.3 + time) * 20 + 
+                              Math.cos(y * 0.5 - time) * 15;
+
+                    const pos = project(x * 20, y * 20, z);
+
+                    if (c === -cols) ctx.moveTo(pos.x, pos.y);
+                    else ctx.lineTo(pos.x, pos.y);
+                }
+                ctx.stroke();
             }
 
-            ctx.lineTo(width, height);
-            ctx.lineTo(0, height);
-            ctx.fillStyle = color;
-            ctx.fill();
+            // Draw vertical lines for the grid effect
+            for (let c = -cols; c <= cols; c += 2) {
+                ctx.beginPath();
+                for (let r = 0; r < rows; r++) {
+                    const x = c;
+                    const y = r * 2;
+                    const z = Math.sin(x * 0.3 + time) * 20 + 
+                              Math.cos(y * 0.5 - time) * 15;
+                    const pos = project(x * 20, y * 20, z);
+                    if (r === 0) ctx.moveTo(pos.x, pos.y);
+                    else ctx.lineTo(pos.x, pos.y);
+                }
+                ctx.stroke();
+            }
+
+            requestAnimationFrame(draw);
         }
 
-        drawWaves();
-
-        // --- UI Interaction ---
-        function openPlayMenu() {
-            document.body.classList.add('state-selecting-mode');
+        function showPlayMenu() {
+            document.body.classList.add('menu-active');
         }
 
-        function notAccessible() {
-            alert('Not accessible yet!');
-        }
+        draw();
     </script>
 </body>
 </html>
