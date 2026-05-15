@@ -3,133 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Title Screen</title>
+    <title>Subnautika Title Screen</title>
     <style>
-        /* --- Reset & Base Styles --- */
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            
-            /* Realistic, soft sky background (Back layer) */
-            background: linear-gradient(to bottom, #7ca3c8 0%, #b8d0e0 100%);
+            font-family: 'Segoe UI', sans-serif;
+            /* Realistic atmospheric sky */
+            background: linear-gradient(to bottom, #4a769d 0%, #9cb9cc 50%, #d1e1e9 100%);
         }
 
-        /* --- 3D Canvas Background (Middle layer) --- */
         #canvas-container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1; /* Sits above the body background */
+            z-index: 1;
         }
 
-        /* --- UI Overlay (Front layer) --- */
         #ui-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 10; /* Sits above the 3D canvas */
+            z-index: 10;
             display: flex;
             flex-direction: column;
             pointer-events: none;
         }
 
-        /* --- Logo --- */
         .logo-container {
             width: 100%;
             text-align: center;
-            margin-top: 10vh;
+            margin-top: 8vh;
         }
         .logo-container img {
             max-width: 600px;
-            width: 80%;
-            filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.5));
+            width: 70%;
+            filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.4));
         }
 
-        /* --- Interactive Container --- */
         .interactive-area {
             flex-grow: 1;
             position: relative;
             pointer-events: auto;
         }
 
-        /* --- Main Menu --- */
         .main-menu {
             position: absolute;
-            bottom: 15vh;
-            left: 20vw;
+            bottom: 12vh;
+            left: 15vw;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            transition: transform 0.5s ease-in-out, opacity 0.5s ease;
+            gap: 12px;
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
         }
 
         .main-menu.shifted {
-            transform: translateX(-10vw);
+            transform: translateX(-12vw);
         }
 
         .menu-btn {
-            background: linear-gradient(90deg, rgba(0, 105, 180, 0.8) 0%, rgba(0, 160, 255, 0.6) 100%);
-            border: 2px solid #4dfaff;
-            border-radius: 25px;
+            background: linear-gradient(90deg, rgba(0, 80, 130, 0.8) 0%, rgba(0, 140, 200, 0.5) 100%);
+            border: 1.5px solid rgba(77, 250, 255, 0.7);
+            border-radius: 30px;
             color: white;
-            font-size: 1.2rem;
-            font-weight: bold;
-            padding: 10px 40px 10px 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 12px 40px 12px 55px;
             cursor: pointer;
             position: relative;
             text-align: left;
-            width: 250px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-            transition: all 0.2s;
+            width: 260px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            backdrop-filter: blur(4px);
+            letter-spacing: 2.5px;
+            backdrop-filter: blur(6px);
         }
 
         .menu-btn:hover {
-            background: linear-gradient(90deg, rgba(0, 140, 220, 0.9) 0%, rgba(50, 200, 255, 0.8) 100%);
-            box-shadow: 0 0 15px #4dfaff;
-            transform: scale(1.05);
+            background: linear-gradient(90deg, rgba(0, 110, 180, 0.9) 0%, rgba(50, 180, 255, 0.7) 100%);
+            box-shadow: 0 0 20px rgba(77, 250, 255, 0.5);
+            transform: scale(1.03) translateX(10px);
         }
 
         .menu-btn::before {
             content: '';
             position: absolute;
-            left: 10px;
+            left: 15px;
             top: 50%;
             transform: translateY(-50%);
-            width: 15px;
-            height: 15px;
+            width: 18px;
+            height: 18px;
             border: 2px solid #4dfaff;
             border-radius: 50%;
-            background: transparent;
         }
 
-        /* --- Gamemode Menu --- */
         .gamemode-menu {
             position: absolute;
-            bottom: 15vh;
-            left: 45vw;
-            background: rgba(0, 50, 100, 0.75);
-            backdrop-filter: blur(5px);
-            border: 2px solid #4dfaff;
-            border-radius: 8px;
-            width: 400px;
-            padding: 20px;
+            bottom: 12vh;
+            left: 42vw;
+            background: rgba(0, 30, 60, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(77, 250, 255, 0.5);
+            border-radius: 4px;
+            width: 380px;
+            padding: 25px;
             color: white;
             opacity: 0;
             visibility: hidden;
-            transform: translateX(20px);
-            transition: all 0.5s ease-in-out;
-            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+            transform: translateX(30px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
         }
 
         .gamemode-menu.active {
@@ -139,38 +130,30 @@
         }
 
         .gamemode-title {
-            font-size: 1.2rem;
-            margin-top: 0;
-            margin-bottom: 15px;
+            font-size: 1rem;
+            margin: 0 0 20px 0;
             color: #4dfaff;
             text-transform: uppercase;
-            border-bottom: 1px solid rgba(77, 250, 255, 0.3);
+            letter-spacing: 3px;
+            border-bottom: 1px solid rgba(77, 250, 255, 0.2);
             padding-bottom: 10px;
         }
 
         .gamemode-item {
-            background: rgba(0, 105, 180, 0.5);
-            border: 1px solid #4dfaff;
-            border-radius: 5px;
+            background: rgba(0, 100, 160, 0.3);
+            border: 1px solid rgba(77, 250, 255, 0.3);
             padding: 15px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .gamemode-item:hover {
-            background: rgba(0, 160, 255, 0.6);
+            background: rgba(0, 160, 255, 0.4);
+            border-color: #4dfaff;
         }
 
-        .gamemode-item h3 {
-            margin: 0 0 5px 0;
-            font-size: 1.1rem;
-        }
-
-        .gamemode-item p {
-            margin: 0;
-            font-size: 0.85rem;
-            color: #ccc;
-        }
+        .gamemode-item h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
+        .gamemode-item p { margin: 0; font-size: 0.8rem; color: #adcad6; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -179,7 +162,7 @@
 
     <div id="ui-layer">
         <div class="logo-container">
-            <img src="textures/Subnautika.png" alt="Game Logo">
+            <img src="textures/Subnautika.png" alt="Subnautika">
         </div>
 
         <div class="interactive-area">
@@ -193,7 +176,7 @@
                 <h2 class="gamemode-title">New Game</h2>
                 <div class="gamemode-item" onclick="startGame()">
                     <h3>Survival</h3>
-                    <p>Scavenge resources, manage hunger/thirst, and survive the depths.</p>
+                    <p>Standard play: manage vitals and explore the alien depths.</p>
                 </div>
             </div>
         </div>
@@ -203,112 +186,102 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
 
     <script>
-        // --- UI LOGIC ---
-        let isPlayMenuOpen = false;
+        const simplex = new SimplexNoise();
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        
+        // Setup Camera
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
+        camera.position.set(0, 35, 140);
+        camera.lookAt(0, 10, -100);
 
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+        sun.position.set(50, 100, 50);
+        scene.add(sun);
+
+        // --- THE WATER (Murky Blue/Cyan) ---
+        const waterGeo = new THREE.PlaneGeometry(1500, 1500, 128, 128);
+        waterGeo.rotateX(-Math.PI / 2);
+
+        const waterMat = new THREE.MeshPhongMaterial({
+            color: 0x003d45,      // Dark Murky Cyan
+            emissive: 0x001a1d,   // Deep base
+            specular: 0x111111,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.95
+        });
+
+        const water = new THREE.Mesh(waterGeo, waterMat);
+        scene.add(water);
+
+        // --- THE CLOUDS (Flat Perlin Layer) ---
+        const cloudGeo = new THREE.PlaneGeometry(2000, 2000, 64, 64);
+        cloudGeo.rotateX(Math.PI / 2); // Face downward
+        
+        const cloudMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.4,
+            side: THREE.DoubleSide
+        });
+
+        const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+        clouds.position.y = 400; // High in the sky
+        scene.add(clouds);
+
+        // UI Functions
+        let isPlayMenuOpen = false;
         function togglePlayMenu() {
             const mainMenu = document.getElementById('mainMenu');
             const gamemodeMenu = document.getElementById('gamemodeMenu');
             isPlayMenuOpen = !isPlayMenuOpen;
-
-            if (isPlayMenuOpen) {
-                mainMenu.classList.add('shifted');
-                gamemodeMenu.classList.add('active');
-            } else {
-                mainMenu.classList.remove('shifted');
-                gamemodeMenu.classList.remove('active');
-            }
+            mainMenu.classList.toggle('shifted', isPlayMenuOpen);
+            gamemodeMenu.classList.toggle('active', isPlayMenuOpen);
         }
 
-        function showNotAccessible() {
-            alert('Not accessible yet!');
-        }
+        function showNotAccessible() { alert('Not accessible yet!'); }
+        function startGame() { alert('Loading Survival...'); }
 
-        function startGame() {
-            alert('Starting Survival mode...');
-        }
-
-        // --- 3D WATER GENERATION ---
-        const container = document.getElementById('canvas-container');
-        
-        // Scene setup
-        const scene = new THREE.Scene();
-        // Fog matches the bottom color of the CSS sky gradient to blend the horizon
-        scene.fog = new THREE.FogExp2(0xb8d0e0, 0.001);
-
-        // Camera setup - Lowered to see the horizon and wave depth better
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
-        camera.position.set(0, 40, 150); 
-        camera.lookAt(0, 0, -200);
-
-        // Renderer setup - Alpha set to true to allow CSS background to show through
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setClearColor(0x000000, 0); // Fully transparent renderer background
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        container.appendChild(renderer.domElement);
-
-        // Lighting to emphasize 3D geometry
-        const ambientLight = new THREE.AmbientLight(0x404040, 1.2); 
-        scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        directionalLight.position.set(-100, 100, 50);
-        scene.add(directionalLight);
-
-        // Water Plane Geometry - High segment count for smooth wave curves
-        const geometry = new THREE.PlaneGeometry(3000, 3000, 150, 150);
-        geometry.rotateX(-Math.PI / 2); 
-
-        // Material - Tweaked for a realistic, slightly translucent water feel
-        const material = new THREE.MeshPhongMaterial({
-            color: 0x1ca3ec,
-            emissive: 0x003366, // Gives the deep water a darker blue base
-            specular: 0xffffff,
-            shininess: 90,
-            flatShading: false, // Smooth shading for realistic curves
-            transparent: true,
-            opacity: 0.85
-        });
-
-        const water = new THREE.Mesh(geometry, material);
-        scene.add(water);
-
-        // Noise setup
-        const simplex = new SimplexNoise();
-        const posAttribute = geometry.attributes.position;
+        // Animation logic
         let time = 0;
-
-        // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
+            time += 0.008; // Increased speed - no more slime!
 
-            time += 0.002; // Slower, more majestic wave speed
-
-            // Modify vertices
-            for (let i = 0; i < posAttribute.count; i++) {
-                const x = posAttribute.getX(i);
-                const z = posAttribute.getZ(i);
+            // Animate Water
+            const waterPos = waterGeo.attributes.position;
+            for (let i = 0; i < waterPos.count; i++) {
+                const x = waterPos.getX(i);
+                const z = waterPos.getZ(i);
                 
-                const noiseScale = 0.003; // Wider waves
-                const waveHeight = 18;    // Taller waves
+                // Combine two noise layers for "choppier" water
+                const noise1 = simplex.noise3D(x * 0.006, z * 0.006, time) * 12;
+                const noise2 = simplex.noise3D(x * 0.015, z * 0.015, time * 1.5) * 4;
                 
-                const y = simplex.noise3D(x * noiseScale, z * noiseScale, time) * waveHeight;
-                posAttribute.setY(i, y);
+                waterPos.setY(i, noise1 + noise2);
             }
-            
-            posAttribute.needsUpdate = true;
-            geometry.computeVertexNormals(); // Crucial for lighting to cast shadows on waves
+            waterPos.needsUpdate = true;
+            waterGeo.computeVertexNormals();
 
-            // Gentle camera sway
-            camera.position.x = Math.sin(time) * 30;
-            camera.lookAt(0, 0, -200);
+            // Animate Clouds (Slow drift)
+            clouds.position.x = Math.sin(time * 0.1) * 50;
+            clouds.position.z += 0.1;
+            if(clouds.position.z > 500) clouds.position.z = -500;
 
             renderer.render(scene, camera);
         }
 
         animate();
 
-        // Handle window resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
