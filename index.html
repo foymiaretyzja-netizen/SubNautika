@@ -2,252 +2,326 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Subnautika - Deep 3D Ocean</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Title Screen</title>
     <style>
-        :root {
-            --sub-cyan: #00e1ff;
-            --sub-deep: #001a1a;
-            --glass: rgba(0, 15, 20, 0.8);
-        }
-
+        /* --- Reset & Base Styles --- */
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: linear-gradient(to bottom, #1a2a3a 0%, #3a506b 40%, #5a7b8f 70%);
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #001e36;
         }
 
-        canvas {
+        /* --- 3D Canvas Background --- */
+        #canvas-container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
+            z-index: -1;
         }
 
-        /* Fixed UI Container */
-        #ui-wrapper {
+        /* --- UI Overlay --- */
+        #ui-layer {
             position: absolute;
-            inset: 0;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
-        }
-
-        /* Panel Group for Smooth Sliding */
-        .ui-scene {
-            display: flex;
-            width: 200%; /* Two panels wide */
-            height: 100%;
-            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: none;
-        }
-
-        /* Section 1: Main Menu */
-        .panel-main {
-            width: 50%;
+            top: 0;
+            left: 0;
+            width: 100%;
             height: 100%;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            pointer-events: none; /* Let clicks pass through empty spaces */
+        }
+
+        /* --- Logo --- */
+        .logo-container {
+            width: 100%;
+            text-align: center;
+            margin-top: 10vh;
+        }
+        .logo-container img {
+            max-width: 600px;
+            width: 80%;
+            filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.5));
+        }
+
+        /* --- Interactive Container --- */
+        .interactive-area {
+            flex-grow: 1;
+            position: relative;
             pointer-events: auto;
         }
 
-        /* Section 2: Gamemode Selection */
-        .panel-modes {
-            width: 50%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            padding-left: 5%;
-            pointer-events: auto;
-        }
-
-        .logo {
-            width: 500px;
-            margin-bottom: 40px;
-            filter: drop-shadow(0 0 20px rgba(0,0,0,0.8));
-        }
-
-        .btn-stack {
+        /* --- Main Menu --- */
+        .main-menu {
+            position: absolute;
+            bottom: 15vh;
+            left: 20vw;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            transition: transform 0.5s ease-in-out, opacity 0.5s ease;
         }
 
-        .btn {
-            background: var(--glass);
-            border: 1px solid rgba(0, 225, 255, 0.3);
+        /* Shifts left when Play is clicked */
+        .main-menu.shifted {
+            transform: translateX(-10vw);
+        }
+
+        .menu-btn {
+            background: linear-gradient(90deg, rgba(0, 105, 180, 0.8) 0%, rgba(0, 160, 255, 0.6) 100%);
+            border: 2px solid #4dfaff;
+            border-radius: 25px;
             color: white;
-            width: 280px;
-            padding: 15px 25px;
-            font-size: 14px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 10px 40px 10px 50px;
             cursor: pointer;
-            border-radius: 4px;
+            position: relative;
             text-align: left;
-            transition: 0.3s;
-            backdrop-filter: blur(10px);
+            width: 250px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
-        .btn:hover {
-            background: var(--sub-cyan);
-            color: #000;
-            transform: translateX(15px);
-            box-shadow: 0 0 25px rgba(0, 225, 255, 0.5);
+        .menu-btn:hover {
+            background: linear-gradient(90deg, rgba(0, 140, 220, 0.9) 0%, rgba(50, 200, 255, 0.8) 100%);
+            box-shadow: 0 0 15px #4dfaff;
+            transform: scale(1.05);
         }
 
-        .mode-panel {
-            background: var(--glass);
-            width: 420px;
-            padding: 40px;
-            border-left: 3px solid var(--sub-cyan);
-            color: white;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        /* The circle detail on the left of the buttons */
+        .menu-btn::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 15px;
+            border: 2px solid #4dfaff;
+            border-radius: 50%;
+            background: transparent;
         }
 
-        .mode-card {
-            background: rgba(255,255,255,0.05);
+        /* --- Gamemode Menu --- */
+        .gamemode-menu {
+            position: absolute;
+            bottom: 15vh;
+            left: 45vw; /* Positioned to the right of the shifted main menu */
+            background: rgba(0, 50, 100, 0.7);
+            border: 2px solid #4dfaff;
+            border-radius: 8px;
+            width: 400px;
             padding: 20px;
-            margin-top: 25px;
+            color: white;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(20px);
+            transition: all 0.5s ease-in-out;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        .gamemode-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+        }
+
+        .gamemode-title {
+            font-size: 1.2rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4dfaff;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(77, 250, 255, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .gamemode-item {
+            background: rgba(0, 105, 180, 0.5);
+            border: 1px solid #4dfaff;
+            border-radius: 5px;
+            padding: 15px;
             cursor: pointer;
-            transition: 0.2s;
+            transition: background 0.2s;
         }
 
-        .mode-card:hover {
-            background: rgba(255,255,255,0.1);
-            outline: 1px solid var(--sub-cyan);
+        .gamemode-item:hover {
+            background: rgba(0, 160, 255, 0.6);
         }
 
-        /* State trigger */
-        body.mode-active .ui-scene {
-            transform: translateX(-35%); /* Adjusts logo to the left, reveals modes */
+        .gamemode-item h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.1rem;
+        }
+
+        .gamemode-item p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #ccc;
         }
     </style>
 </head>
 <body>
 
-    <canvas id="ocean"></canvas>
+    <div id="canvas-container"></div>
 
-    <div id="ui-wrapper">
-        <div class="ui-scene">
-            <div class="panel-main">
-                <img src="textures/Subnautika.png" alt="SUBNAUTIKA" class="logo">
-                <div class="btn-stack">
-                    <button class="btn" onclick="openModes()">Play</button>
-                    <button class="btn" onclick="alert('Not accessible yet!')">Options</button>
-                    <button class="btn" onclick="alert('Not accessible yet!')">Quit</button>
+    <div id="ui-layer">
+        
+        <div class="logo-container">
+            <img src="textures/Subnautika.png" alt="Game Logo">
+        </div>
+
+        <div class="interactive-area">
+            
+            <div class="main-menu" id="mainMenu">
+                <button class="menu-btn" onclick="togglePlayMenu()">Play</button>
+                <button class="menu-btn" onclick="showNotAccessible()">Options</button>
+                <button class="menu-btn" onclick="showNotAccessible()">Quit</button>
+            </div>
+
+            <div class="gamemode-menu" id="gamemodeMenu">
+                <h2 class="gamemode-title">New Game</h2>
+                <div class="gamemode-item" onclick="startGame()">
+                    <h3>Survival</h3>
+                    <p>Scavenge resources, manage hunger/thirst, and survive the depths.</p>
                 </div>
             </div>
 
-            <div class="panel-modes">
-                <div class="mode-panel">
-                    <h2 style="letter-spacing: 5px; font-weight: 300;">NEW GAME</h2>
-                    <div class="mode-card" onclick="alert('Starting Survival...')">
-                        <h3 style="margin:0; color: var(--sub-cyan);">SURVIVAL</h3>
-                        <p style="font-size: 13px; opacity: 0.7;">Gather resources and survive the depths.</p>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
     <script>
-        const canvas = document.getElementById('ocean');
-        const ctx = canvas.getContext('2d');
+        // --- UI LOGIC ---
+        let isPlayMenuOpen = false;
 
-        let width, height, time = 0;
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        function togglePlayMenu() {
+            const mainMenu = document.getElementById('mainMenu');
+            const gamemodeMenu = document.getElementById('gamemodeMenu');
+            
+            isPlayMenuOpen = !isPlayMenuOpen;
 
-        // 3D Grid Parameters
-        const rows = 45; 
-        const cols = 55;
-        const spacing = 50;
-
-        function project(x, y, z) {
-            const perspective = 800;
-            const scale = perspective / (perspective + y);
-            const sx = (x * scale) + (width / 2);
-            const sy = (z * scale) + (y * 0.5) + (height * 0.4); 
-            return { x: sx, y: sy, scale: scale };
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, width, height);
-            time += 0.008;
-
-            // Render Back to Front
-            for (let y = rows; y >= 0; y--) {
-                for (let x = -cols/2; x < cols/2; x++) {
-                    
-                    const getZ = (xi, yi) => {
-                        // Multi-octave wave math for "True 3D" feel
-                        let z = Math.sin(xi * 0.15 + time * 1.5) * 15;
-                        z += Math.cos(yi * 0.1 + time * 2) * 12;
-                        z += Math.sin((xi + yi) * 0.1 + time) * 10;
-                        return z;
-                    };
-
-                    const z1 = getZ(x, y);
-                    const z2 = getZ(x + 1, y);
-                    const z3 = getZ(x + 1, y + 1);
-                    const z4 = getZ(x, y + 1);
-
-                    const p1 = project(x * spacing, y * spacing, z1);
-                    const p2 = project((x + 1) * spacing, y * spacing, z2);
-                    const p3 = project((x + 1) * spacing, (y + 1) * spacing, z3);
-                    const p4 = project(x * spacing, (y + 1) * spacing, z4);
-
-                    // --- 3D Shading Math ---
-                    // We calculate the color based on height (z) and slope
-                    const brightness = (z1 + 30) / 60; // 0 to 1
-                    const r = 0;
-                    const g = Math.floor(20 + brightness * 40);
-                    const b = Math.floor(30 + brightness * 60);
-                    
-                    // Atmosphere/Fog: Fade quads as they get further away (higher y)
-                    const opacity = Math.max(0, 1 - (y / rows));
-
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x, p1.y);
-                    ctx.lineTo(p2.x, p2.y);
-                    ctx.lineTo(p3.x, p3.y);
-                    ctx.lineTo(p4.x, p4.y);
-                    ctx.closePath();
-
-                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-                    ctx.fill();
-
-                    // Surface highlights (Specular peaks)
-                    if (z1 > 10) {
-                        ctx.strokeStyle = `rgba(0, 225, 255, ${opacity * 0.2})`;
-                        ctx.lineWidth = 0.5;
-                        ctx.stroke();
-                    }
-                }
+            if (isPlayMenuOpen) {
+                mainMenu.classList.add('shifted');
+                gamemodeMenu.classList.add('active');
+            } else {
+                mainMenu.classList.remove('shifted');
+                gamemodeMenu.classList.remove('active');
             }
-            requestAnimationFrame(draw);
         }
 
-        function openModes() {
-            document.body.classList.add('mode-active');
+        function showNotAccessible() {
+            alert('Not accessible yet!');
         }
 
-        draw();
+        function startGame() {
+            alert('Starting Survival mode...');
+        }
+
+        // --- 3D WATER GENERATION (Three.js + Perlin/Simplex Noise) ---
+        const container = document.getElementById('canvas-container');
+        
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Sky blue background
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.002);
+
+        // Camera setup
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
+        camera.position.set(0, 50, 200); // Angle camera looking down at the water
+        camera.lookAt(0, 0, 0);
+
+        // Renderer setup
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 1);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        directionalLight.position.set(-1, 1, 1).normalize();
+        scene.add(directionalLight);
+
+        // Water Plane Geometry
+        // Create a large plane with many segments to bend vertices
+        const geometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
+        geometry.rotateX(-Math.PI / 2); // Lay flat
+
+        // Water Material (shiny blue)
+        const material = new THREE.MeshPhongMaterial({
+            color: 0x005588,
+            specular: 0x111111,
+            shininess: 80,
+            flatShading: true // Gives a stylized, low-poly/crisp wave look
+        });
+
+        const water = new THREE.Mesh(geometry, material);
+        scene.add(water);
+
+        // Noise setup
+        const simplex = new SimplexNoise();
+        const posAttribute = geometry.attributes.position;
+        const initialY = []; // Store base positions
+
+        for (let i = 0; i < posAttribute.count; i++) {
+            initialY.push(posAttribute.getY(i));
+        }
+
+        let time = 0;
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            time += 0.003; // Speed of the waves
+
+            // Modify vertices using Perlin/Simplex noise
+            for (let i = 0; i < posAttribute.count; i++) {
+                const x = posAttribute.getX(i);
+                const z = posAttribute.getZ(i);
+                
+                // Scale inputs to adjust wave frequency
+                const noiseScale = 0.005;
+                const waveHeight = 15;
+                
+                // Calculate new Y position based on 3D noise (x, z, time)
+                const y = simplex.noise3D(x * noiseScale, z * noiseScale, time) * waveHeight;
+                
+                posAttribute.setY(i, y);
+            }
+            
+            // Tell Three.js the geometry has changed
+            posAttribute.needsUpdate = true;
+            geometry.computeVertexNormals(); // Recalculate lighting interaction
+
+            // Slowly rotate camera for dynamic feel
+            camera.position.x = Math.sin(time) * 100;
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
