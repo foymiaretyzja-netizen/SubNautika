@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Subnautika - Atmospheric Menu</title>
+    <title>Subnautika - Deep Ocean</title>
     <style>
         :root {
-            --sub-blue: #00d4ff;
-            --panel-bg: rgba(5, 15, 25, 0.85);
-            --text-glow: 0 0 10px rgba(0, 212, 255, 0.5);
+            --sub-cyan: #00d4ff;
+            --ocean-murk: #002b36;
+            --panel-glass: rgba(0, 20, 30, 0.85);
         }
 
         body, html {
@@ -16,9 +16,9 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            /* Realistic atmospheric sky gradient */
-            background: linear-gradient(to bottom, #4a6680 0%, #7da2b8 40%, #abbec7 60%);
+            font-family: 'Segoe UI', sans-serif;
+            /* Realistic overcast atmospheric sky */
+            background: linear-gradient(to bottom, #2c3e50 0%, #4a6680 40%, #8e9eab 65%);
         }
 
         canvas {
@@ -26,101 +26,101 @@
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 70%; /* Ocean depth */
+            height: 80%; /* Higher horizon for more ocean scale */
             z-index: 1;
         }
 
-        /* Main UI Container */
-        #ui-viewport {
+        /* UI Wrapper - The 'Scene' */
+        #ui-scene {
             position: relative;
             z-index: 10;
             width: 100%;
             height: 100%;
             display: flex;
+            transition: transform 0.9s cubic-bezier(0.2, 1, 0.3, 1);
+            will-change: transform;
+        }
+
+        /* Left Side: Main Menu */
+        .menu-section {
+            min-width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
         }
 
-        /* Smooth Transition Groups */
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            will-change: transform;
-        }
-
         .logo {
-            width: 550px;
-            margin-bottom: 50px;
-            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));
+            width: 520px;
+            margin-bottom: 60px;
+            filter: drop-shadow(0 15px 30px rgba(0,0,0,0.6));
         }
 
-        /* Buttons */
-        .btn-list {
+        .nav-group {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
         }
 
         .btn {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            color: white;
-            width: 260px;
-            padding: 14px 20px;
-            font-size: 0.9rem;
+            background: rgba(0, 30, 40, 0.6);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            color: #fff;
+            width: 300px;
+            padding: 16px 25px;
+            font-size: 0.85rem;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 4px;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 2px;
             text-align: left;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px);
+            transition: all 0.4s ease;
         }
 
         .btn:hover {
-            background: var(--sub-blue);
+            background: var(--sub-cyan);
             color: #001a33;
-            border-color: #fff;
-            transform: translateX(10px);
-            box-shadow: var(--text-glow);
+            transform: translateX(15px);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.4);
         }
 
-        /* Gamemode Panel */
-        #gamemode-panel {
-            position: absolute;
-            right: -600px; /* Hidden off-screen */
+        /* Right Side: Gamemodes */
+        .gamemode-section {
+            min-width: 50%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding-left: 50px;
+        }
+
+        .gamemode-panel {
             width: 450px;
-            background: var(--panel-bg);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: var(--panel-glass);
+            border-left: 2px solid var(--sub-cyan);
             padding: 40px;
             color: white;
-            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: -20px 0 50px rgba(0,0,0,0.5);
-            border-radius: 4px 0 0 4px;
+            box-shadow: -50px 0 100px rgba(0,0,0,0.5);
         }
 
         .mode-card {
-            background: rgba(255,255,255,0.05);
-            padding: 20px;
-            margin-top: 20px;
-            border-left: 3px solid var(--sub-blue);
+            background: rgba(255,255,255,0.03);
+            padding: 25px;
+            margin-top: 25px;
             cursor: pointer;
-            transition: 0.2s;
+            border: 1px solid transparent;
+            transition: 0.3s;
         }
 
         .mode-card:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.08);
+            border-color: var(--sub-cyan);
         }
 
-        /* Logic for Smooth Move */
-        body.menu-open .main-content {
-            transform: translateX(-25%);
-        }
-
-        body.menu-open #gamemode-panel {
-            transform: translateX(-600px); /* Slides into view */
+        /* State Shift */
+        body.selecting-mode #ui-scene {
+            transform: translateX(-40%);
         }
     </style>
 </head>
@@ -128,24 +128,23 @@
 
     <canvas id="ocean"></canvas>
 
-    <div id="ui-viewport">
-        <div class="main-content">
+    <div id="ui-scene">
+        <div class="menu-section">
             <img src="textures/Subnautika.png" alt="SUBNAUTIKA" class="logo">
-            
-            <div class="btn-list">
-                <button class="btn" onclick="openPlayMenu()">Play</button>
+            <div class="nav-group">
+                <button class="btn" onclick="openModes()">Play</button>
                 <button class="btn" onclick="alert('Not accessible yet!')">Options</button>
                 <button class="btn" onclick="alert('Not accessible yet!')">Quit</button>
             </div>
         </div>
 
-        <div id="gamemode-panel">
-            <h1 style="margin: 0; font-weight: 300; letter-spacing: 5px;">NEW GAME</h1>
-            <div class="mode-card" onclick="alert('Starting...')">
-                <h3 style="margin: 0; color: var(--sub-blue);">SURVIVAL</h3>
-                <p style="font-size: 0.85rem; opacity: 0.7; line-height: 1.6;">
-                    Crash land in a dangerous environment, scavenge resources and manage oxygen levels to survive.
-                </p>
+        <div class="gamemode-section">
+            <div class="gamemode-panel">
+                <h1 style="margin:0; font-weight: 300; letter-spacing: 8px;">SELECT MODE</h1>
+                <div class="mode-card" onclick="alert('Loading Survival...')">
+                    <h3 style="margin:0; color: var(--sub-cyan); letter-spacing: 2px;">SURVIVAL</h3>
+                    <p style="font-size: 0.9rem; opacity: 0.6; line-height: 1.6;">Explore, craft, and survive in the deep murky blue.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -155,7 +154,6 @@
         const ctx = canvas.getContext('2d');
 
         let width, height, time = 0;
-
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
@@ -163,41 +161,48 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // 3D Ocean Simulation Constants
-        const gridX = 40; // Number of "points" across
-        const gridY = 30; // Number of "points" deep
-        const spacing = 50;
+        // 3D Ocean Constants
+        const gridX = 45;
+        const gridY = 35;
+        const spacing = 55;
 
         function project(x, y, z) {
-            const perspective = 600;
+            const perspective = 700;
             const scale = perspective / (perspective + y);
             const sx = (x * scale) + (width / 2);
-            // Move the center of the ocean down slightly
-            const sy = (z * scale) + (y * 0.4) + (height * 0.3); 
-            return { x: sx, y: sy, s: scale };
+            const sy = (z * scale) + (y * 0.35) + (height * 0.35);
+            return { x: sx, y: sy, scale: scale };
         }
 
         function draw() {
             ctx.clearRect(0, 0, width, height);
-            time += 0.008;
+            time += 0.007;
 
-            for (let y = 0; y < gridY; y++) {
+            // Draw from back to front (Painter's Algorithm)
+            for (let y = gridY; y >= 0; y--) {
                 for (let x = -gridX / 2; x < gridX / 2; x++) {
                     
-                    // Wave Math: Two layers of Sine/Cosine for organic movement
+                    // The "Complex Wave" Math
+                    // Layering 3 different octaves for organic 3D movement
                     const getZ = (xi, yi) => {
-                        return Math.sin(xi * 0.2 + time * 2) * 15 + 
-                               Math.cos(yi * 0.3 - time * 1.5) * 10;
+                        let val = Math.sin(xi * 0.2 + time * 1.5) * 12;
+                        val += Math.cos(yi * 0.2 + time * 2) * 15;
+                        val += Math.sin((xi + yi) * 0.1 + time) * 8; // Cross wave
+                        return val;
                     };
 
                     const p1 = project(x * spacing, y * spacing, getZ(x, y));
                     const p2 = project((x + 1) * spacing, y * spacing, getZ(x + 1, y));
-                    const p3 = project((x + 1) * spacing, (y + 1) * spacing, getZ(x + 1, y + 1));
-                    const p4 = project(x * spacing, (y + 1) * spacing, getZ(x, y + 1));
+                    const p3 = project((x + 1) * spacing, (y + 1) * spacing, getZ(x + 1, (y + 1)));
+                    const p4 = project(x * spacing, (y + 1) * spacing, getZ(x, (y + 1)));
 
-                    // Shading logic: Deeper water is darker
-                    const blueValue = Math.floor(40 + (y * 3));
-                    const opacity = Math.max(0.1, 1 - (y / gridY)); // Fade into horizon
+                    // Calculate Murky Color
+                    // Waves further away (higher Y) are darker and faded
+                    const depthFactor = y / gridY;
+                    const r = 0;
+                    const g = Math.floor(35 + (depthFactor * 25));
+                    const b = Math.floor(45 + (depthFactor * 30));
+                    const alpha = 1 - (depthFactor * 0.8);
 
                     ctx.beginPath();
                     ctx.moveTo(p1.x, p1.y);
@@ -206,11 +211,11 @@
                     ctx.lineTo(p4.x, p4.y);
                     ctx.closePath();
 
-                    ctx.fillStyle = `rgba(0, ${blueValue}, ${blueValue + 40}, ${opacity})`;
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
                     ctx.fill();
-                    
-                    // Subtle grid lines for that "tech" survival feel
-                    ctx.strokeStyle = `rgba(0, 212, 255, ${opacity * 0.2})`;
+
+                    // Edge highlights for the "water surface" look
+                    ctx.strokeStyle = `rgba(0, 212, 255, ${alpha * 0.15})`;
                     ctx.lineWidth = 0.5;
                     ctx.stroke();
                 }
@@ -218,8 +223,8 @@
             requestAnimationFrame(draw);
         }
 
-        function openPlayMenu() {
-            document.body.classList.add('menu-open');
+        function openModes() {
+            document.body.classList.add('selecting-mode');
         }
 
         draw();
