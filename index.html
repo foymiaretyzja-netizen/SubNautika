@@ -13,29 +13,32 @@
             height: 100%;
             overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #001e36;
+            
+            /* Realistic, soft sky background (Back layer) */
+            background: linear-gradient(to bottom, #7ca3c8 0%, #b8d0e0 100%);
         }
 
-        /* --- 3D Canvas Background --- */
+        /* --- 3D Canvas Background (Middle layer) --- */
         #canvas-container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
+            z-index: 1; /* Sits above the body background */
         }
 
-        /* --- UI Overlay --- */
+        /* --- UI Overlay (Front layer) --- */
         #ui-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            z-index: 10; /* Sits above the 3D canvas */
             display: flex;
             flex-direction: column;
-            pointer-events: none; /* Let clicks pass through empty spaces */
+            pointer-events: none;
         }
 
         /* --- Logo --- */
@@ -68,7 +71,6 @@
             transition: transform 0.5s ease-in-out, opacity 0.5s ease;
         }
 
-        /* Shifts left when Play is clicked */
         .main-menu.shifted {
             transform: translateX(-10vw);
         }
@@ -89,6 +91,7 @@
             transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 2px;
+            backdrop-filter: blur(4px);
         }
 
         .menu-btn:hover {
@@ -97,7 +100,6 @@
             transform: scale(1.05);
         }
 
-        /* The circle detail on the left of the buttons */
         .menu-btn::before {
             content: '';
             position: absolute;
@@ -115,8 +117,9 @@
         .gamemode-menu {
             position: absolute;
             bottom: 15vh;
-            left: 45vw; /* Positioned to the right of the shifted main menu */
-            background: rgba(0, 50, 100, 0.7);
+            left: 45vw;
+            background: rgba(0, 50, 100, 0.75);
+            backdrop-filter: blur(5px);
             border: 2px solid #4dfaff;
             border-radius: 8px;
             width: 400px;
@@ -175,13 +178,11 @@
     <div id="canvas-container"></div>
 
     <div id="ui-layer">
-        
         <div class="logo-container">
             <img src="textures/Subnautika.png" alt="Game Logo">
         </div>
 
         <div class="interactive-area">
-            
             <div class="main-menu" id="mainMenu">
                 <button class="menu-btn" onclick="togglePlayMenu()">Play</button>
                 <button class="menu-btn" onclick="showNotAccessible()">Options</button>
@@ -195,7 +196,6 @@
                     <p>Scavenge resources, manage hunger/thirst, and survive the depths.</p>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -209,7 +209,6 @@
         function togglePlayMenu() {
             const mainMenu = document.getElementById('mainMenu');
             const gamemodeMenu = document.getElementById('gamemodeMenu');
-            
             isPlayMenuOpen = !isPlayMenuOpen;
 
             if (isPlayMenuOpen) {
@@ -229,43 +228,46 @@
             alert('Starting Survival mode...');
         }
 
-        // --- 3D WATER GENERATION (Three.js + Perlin/Simplex Noise) ---
+        // --- 3D WATER GENERATION ---
         const container = document.getElementById('canvas-container');
         
         // Scene setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Sky blue background
-        scene.fog = new THREE.FogExp2(0x87CEEB, 0.002);
+        // Fog matches the bottom color of the CSS sky gradient to blend the horizon
+        scene.fog = new THREE.FogExp2(0xb8d0e0, 0.001);
 
-        // Camera setup
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
-        camera.position.set(0, 50, 200); // Angle camera looking down at the water
-        camera.lookAt(0, 0, 0);
+        // Camera setup - Lowered to see the horizon and wave depth better
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
+        camera.position.set(0, 40, 150); 
+        camera.lookAt(0, 0, -200);
 
-        // Renderer setup
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Renderer setup - Alpha set to true to allow CSS background to show through
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setClearColor(0x000000, 0); // Fully transparent renderer background
         renderer.setSize(window.innerWidth, window.innerHeight);
         container.appendChild(renderer.domElement);
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 1);
+        // Lighting to emphasize 3D geometry
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.2); 
         scene.add(ambientLight);
         
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        directionalLight.position.set(-1, 1, 1).normalize();
+        directionalLight.position.set(-100, 100, 50);
         scene.add(directionalLight);
 
-        // Water Plane Geometry
-        // Create a large plane with many segments to bend vertices
-        const geometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
-        geometry.rotateX(-Math.PI / 2); // Lay flat
+        // Water Plane Geometry - High segment count for smooth wave curves
+        const geometry = new THREE.PlaneGeometry(3000, 3000, 150, 150);
+        geometry.rotateX(-Math.PI / 2); 
 
-        // Water Material (shiny blue)
+        // Material - Tweaked for a realistic, slightly translucent water feel
         const material = new THREE.MeshPhongMaterial({
-            color: 0x005588,
-            specular: 0x111111,
-            shininess: 80,
-            flatShading: true // Gives a stylized, low-poly/crisp wave look
+            color: 0x1ca3ec,
+            emissive: 0x003366, // Gives the deep water a darker blue base
+            specular: 0xffffff,
+            shininess: 90,
+            flatShading: false, // Smooth shading for realistic curves
+            transparent: true,
+            opacity: 0.85
         });
 
         const water = new THREE.Mesh(geometry, material);
@@ -274,42 +276,32 @@
         // Noise setup
         const simplex = new SimplexNoise();
         const posAttribute = geometry.attributes.position;
-        const initialY = []; // Store base positions
-
-        for (let i = 0; i < posAttribute.count; i++) {
-            initialY.push(posAttribute.getY(i));
-        }
-
         let time = 0;
 
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
 
-            time += 0.003; // Speed of the waves
+            time += 0.002; // Slower, more majestic wave speed
 
-            // Modify vertices using Perlin/Simplex noise
+            // Modify vertices
             for (let i = 0; i < posAttribute.count; i++) {
                 const x = posAttribute.getX(i);
                 const z = posAttribute.getZ(i);
                 
-                // Scale inputs to adjust wave frequency
-                const noiseScale = 0.005;
-                const waveHeight = 15;
+                const noiseScale = 0.003; // Wider waves
+                const waveHeight = 18;    // Taller waves
                 
-                // Calculate new Y position based on 3D noise (x, z, time)
                 const y = simplex.noise3D(x * noiseScale, z * noiseScale, time) * waveHeight;
-                
                 posAttribute.setY(i, y);
             }
             
-            // Tell Three.js the geometry has changed
             posAttribute.needsUpdate = true;
-            geometry.computeVertexNormals(); // Recalculate lighting interaction
+            geometry.computeVertexNormals(); // Crucial for lighting to cast shadows on waves
 
-            // Slowly rotate camera for dynamic feel
-            camera.position.x = Math.sin(time) * 100;
-            camera.lookAt(0, 0, 0);
+            // Gentle camera sway
+            camera.position.x = Math.sin(time) * 30;
+            camera.lookAt(0, 0, -200);
 
             renderer.render(scene, camera);
         }
