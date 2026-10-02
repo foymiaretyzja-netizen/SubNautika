@@ -200,7 +200,7 @@
 
                 // A layered underwater atmosphere makes the 3D terrain silhouette readable.
                 scene.background = new THREE.Color(0x043747);
-                scene.fog = new THREE.FogExp2(0x043747, 0.011);
+                scene.fog = new THREE.FogExp2(0x043747, 0.0065);
 
                 camera = new THREE.PerspectiveCamera(
                     72,
@@ -210,10 +210,12 @@
                 );
 
                 // First-person starting position.
-                camera.position.set(0, 12, 80);
+                camera.position.set(0, 34, 115);
 
                 movement.yaw = 0;
-                movement.pitch = -0.05;
+                // Start looking noticeably downward so the 3D seafloor is
+                // immediately visible instead of staring into the fog.
+                movement.pitch = -0.28;
                 updateCameraRotation();
 
                 renderer = new THREE.WebGLRenderer({
@@ -239,10 +241,10 @@
 
                 const underwaterSun = new THREE.DirectionalLight(
                     0x8cecf2,
-                    0.75
+                    1.05
                 );
 
-                underwaterSun.position.set(-180, 220, 100);
+                underwaterSun.position.set(-180, 260, 160);
                 scene.add(underwaterSun);
 
                 // Large soft blue point of light near the surface.
@@ -256,8 +258,8 @@
                 scene.add(surfaceGlow);
 
                 const terrainMaterial = new THREE.MeshStandardMaterial({
-                    color: 0x17484a,
-                    roughness: 0.96,
+                    color: 0x245b54,
+                    roughness: 0.90,
                     metalness: 0.0
                 });
 
