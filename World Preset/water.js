@@ -54,7 +54,7 @@ window.SubNautikaWater = (() => {
         simplex = new SimplexNoise();
 
         // More surface detail than the original while keeping the browser load reasonable.
-        const geometry = new THREE.PlaneGeometry(3000, 3000, 150, 150);
+        const geometry = new THREE.PlaneGeometry(3000, 3000, 190, 190);
         geometry.rotateX(-Math.PI / 2);
 
         const foamTexture = makeFoamTexture();
@@ -82,16 +82,21 @@ window.SubNautikaWater = (() => {
                 float wave(vec2 p, float t) {
                     float h = 0.0;
 
-                    // Big ocean swells.
-                    h += sin(p.x * 0.0032 + t * 0.40) * 7.5;
-                    h += cos(p.y * 0.0027 - t * 0.31) * 5.5;
+                    // Long rolling swells.
+                    h += sin(p.x * 0.0028 + t * 0.34) * 9.5;
+                    h += cos(p.y * 0.00235 - t * 0.27) * 7.0;
 
-                    // Cross waves break up the large shapes.
-                    h += sin((p.x + p.y) * 0.0085 + t * 0.55) * 2.7;
-                    h += cos((p.x - p.y) * 0.014 + t * 0.46) * 1.25;
+                    // Strong cross-seas create irregular crests.
+                    h += sin((p.x + p.y) * 0.0068 + t * 0.50) * 4.0;
+                    h += cos((p.x - p.y) * 0.0105 - t * 0.43) * 2.8;
 
-                    // Small surface ripples.
-                    h += sin(p.x * 0.035 + p.y * 0.021 + t * 1.2) * 0.30;
+                    // Choppier harmonics sharpen the tops instead of making perfect sine hills.
+                    h += sin(p.x * 0.014 + t * 0.82) * 1.15;
+                    h += sin(p.y * 0.019 - t * 0.91) * 0.85;
+                    h += sin((p.x * 0.018) + (p.y * 0.012) + t * 1.08) * 0.65;
+
+                    // Tiny ripples.
+                    h += sin(p.x * 0.043 + p.y * 0.027 + t * 1.45) * 0.28;
 
                     return h;
                 }
@@ -100,19 +105,30 @@ window.SubNautikaWater = (() => {
                     float dx = 0.0;
                     float dy = 0.0;
 
-                    dx += cos(p.x * 0.0032 + t * 0.40) * 7.5 * 0.0032;
-                    dy += -sin(p.y * 0.0027 - t * 0.31) * 5.5 * 0.0027;
+                    dx += cos(p.x * 0.0028 + t * 0.34) * 9.5 * 0.0028;
+                    dy += -sin(p.y * 0.00235 - t * 0.27) * 7.0 * 0.00235;
 
-                    float a = (p.x + p.y) * 0.0085 + t * 0.55;
-                    dx += cos(a) * 2.7 * 0.0085;
-                    dy += cos(a) * 2.7 * 0.0085;
+                    float a = (p.x + p.y) * 0.0068 + t * 0.50;
+                    dx += cos(a) * 4.0 * 0.0068;
+                    dy += cos(a) * 4.0 * 0.0068;
 
-                    float b = (p.x - p.y) * 0.014 + t * 0.46;
-                    dx += -sin(b) * 1.25 * 0.014;
-                    dy += sin(b) * 1.25 * 0.014;
+                    float b = (p.x - p.y) * 0.0105 - t * 0.43;
+                    dx += -sin(b) * 2.8 * 0.0105;
+                    dy += sin(b) * 2.8 * 0.0105;
 
-                    dx += cos(p.x * 0.035 + p.y * 0.021 + t * 1.2) * 0.30 * 0.035;
-                    dy += cos(p.x * 0.035 + p.y * 0.021 + t * 1.2) * 0.30 * 0.021;
+                    float c = p.x * 0.014 + t * 0.82;
+                    dx += cos(c) * 1.15 * 0.014;
+
+                    float d = p.y * 0.019 - t * 0.91;
+                    dy += -sin(d) * 0.85 * 0.019;
+
+                    float e = p.x * 0.018 + p.y * 0.012 + t * 1.08;
+                    dx += cos(e) * 0.65 * 0.018;
+                    dy += cos(e) * 0.65 * 0.012;
+
+                    float f = p.x * 0.043 + p.y * 0.027 + t * 1.45;
+                    dx += cos(f) * 0.28 * 0.043;
+                    dy += cos(f) * 0.28 * 0.027;
 
                     return vec2(dx, dy);
                 }
@@ -207,11 +223,11 @@ window.SubNautikaWater = (() => {
 
                     float noise = texture2D(uFoam, foamUv).r;
 
-                    float crest = smoothstep(4.0, 8.0, vHeight);
-                    float slope = smoothstep(0.055, 0.18, vSlope);
+                    float crest = smoothstep(3.0, 8.5, vHeight);
+                    float slope = smoothstep(0.07, 0.22, vSlope);
 
                     float foamMask = crest * slope;
-                    foamMask *= smoothstep(0.40, 0.70, noise);
+                    foamMask *= smoothstep(0.35, 0.66, noise);
 
                     // Small fragmented edge foam.
                     float breakup = texture2D(
