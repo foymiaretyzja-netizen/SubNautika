@@ -200,6 +200,38 @@
 
                 scene = new THREE.Scene();
 
+                // First-person 3D camera.
+                camera = new THREE.PerspectiveCamera(
+                    72,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    5000
+                );
+
+                camera.position.set(0, 34, 115);
+
+                movement.yaw = 0;
+                movement.pitch = -0.28;
+
+                camera.rotation.order = "YXZ";
+                camera.rotation.y = movement.yaw;
+                camera.rotation.x = movement.pitch;
+
+                // WebGL renderer.
+                renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: false
+                });
+
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+                if ("outputEncoding" in renderer) {
+                    renderer.outputEncoding = THREE.sRGBEncoding;
+                }
+
+                container.appendChild(renderer.domElement);
+
                 // World atmosphere is controlled by underwater.js.
                 // Surface waves are a separate system and only activate near the surface.
                 const underwater = SubNautikaUnderwater.init(scene);
