@@ -156,6 +156,8 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="../code/terrain.js"></script>
+    <script src="../code/underwater.js"></script>
+    <script src="../code/surfaceWater.js"></script>
 
     <script>
         (() => {
@@ -198,64 +200,10 @@
 
                 scene = new THREE.Scene();
 
-                // A layered underwater atmosphere makes the 3D terrain silhouette readable.
-                scene.background = new THREE.Color(0x043747);
-                scene.fog = new THREE.FogExp2(0x043747, 0.0065);
-
-                camera = new THREE.PerspectiveCamera(
-                    72,
-                    window.innerWidth / window.innerHeight,
-                    0.1,
-                    5000
-                );
-
-                // First-person starting position.
-                camera.position.set(0, 34, 115);
-
-                movement.yaw = 0;
-                // Start looking noticeably downward so the 3D seafloor is
-                // immediately visible instead of staring into the fog.
-                movement.pitch = -0.28;
-                updateCameraRotation();
-
-                renderer = new THREE.WebGLRenderer({
-                    antialias: true,
-                    alpha: false
-                });
-
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-                if ("outputEncoding" in renderer) {
-                    renderer.outputEncoding = THREE.sRGBEncoding;
-                }
-
-                container.appendChild(renderer.domElement);
-
-                // Underwater lighting.
-                scene.add(new THREE.HemisphereLight(
-                    0x66d8e6,
-                    0x001016,
-                    1.1
-                ));
-
-                const underwaterSun = new THREE.DirectionalLight(
-                    0x8cecf2,
-                    1.05
-                );
-
-                underwaterSun.position.set(-180, 260, 160);
-                scene.add(underwaterSun);
-
-                // Large soft blue point of light near the surface.
-                const surfaceGlow = new THREE.PointLight(
-                    0x46d9ea,
-                    1.5,
-                    900
-                );
-
-                surfaceGlow.position.set(0, 80, 40);
-                scene.add(surfaceGlow);
+                // World atmosphere is controlled by underwater.js.
+                // Surface waves are a separate system and only activate near the surface.
+                const underwater = SubNautikaUnderwater.init(scene);
+                const surfaceWater = SubNautikaSurfaceWater.init(scene, camera);
 
                 const terrainMaterial = new THREE.MeshStandardMaterial({
                     color: 0x245b54,
@@ -270,68 +218,6 @@
                 });
 
                 setupControls();
-
-                // Add a visible surface reference far above the player so the world
-                // has a strong sense of vertical scale.
-                const surfaceGeometry = new THREE.CircleGeometry(900, 96);
-                const surfaceMaterial = new THREE.MeshBasicMaterial({
-                    color: 0x268da0,
-                    transparent: true,
-                    opacity: 0.12,
-                    side: THREE.DoubleSide,
-                    depthWrite: false
-                });
-
-                const surface = new THREE.Mesh(
-                    surfaceGeometry,
-                    surfaceMaterial
-                );
-
-                surface.rotation.x = -Math.PI / 2;
-                surface.position.y = 42;
-                scene.add(surface);
-
-                // Floating particulate matter.
-                const particleCount = 2200;
-                const particlePositions = new Float32Array(particleCount * 3);
-
-                for (let i = 0; i < particleCount; i++) {
-                    const n = i * 3;
-
-                    particlePositions[n] =
-                        (Math.random() - 0.5) * 1000;
-
-                    particlePositions[n + 1] =
-                        Math.random() * 200 - 50;
-
-                    particlePositions[n + 2] =
-                        (Math.random() - 0.5) * 1300;
-                }
-
-                const particleGeometry = new THREE.BufferGeometry();
-
-                particleGeometry.setAttribute(
-                    "position",
-                    new THREE.BufferAttribute(
-                        particlePositions,
-                        3
-                    )
-                );
-
-                const particleMaterial = new THREE.PointsMaterial({
-                    color: 0x9fe8eb,
-                    size: 0.11,
-                    transparent: true,
-                    opacity: 0.32,
-                    depthWrite: false
-                });
-
-                scene.add(
-                    new THREE.Points(
-                        particleGeometry,
-                        particleMaterial
-                    )
-                );
 
                 let time = 0;
                 const clock = new THREE.Clock();
@@ -391,8 +277,12 @@
                     updateMovement(delta);
                     terrain.update(delta);
 
+                    // Switch environment behavior by height.
+                    underwater.update(camera.position.y);
+                    surfaceWater.update(time);
+
                     depthElement.textContent =
-                        Math.max(0, Math.round(-camera.position.y)) + " m";
+                        Math.max(0, Math.round(42 - camera.position.y)) + " m";
 
                     renderer.render(scene, camera);
                 }
