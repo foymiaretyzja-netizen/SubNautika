@@ -69,6 +69,28 @@
             line-height: 1.5;
         }
 
+
+        #controls-hint {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%);
+            z-index: 11;
+            padding: 9px 14px;
+            background: rgba(0, 20, 30, 0.42);
+            border: 1px solid rgba(110, 225, 240, 0.22);
+            backdrop-filter: blur(5px);
+            color: #b9dfe4;
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+
+        #controls-hint.hidden {
+            opacity: 0;
+        }
+
         #crosshair {
             position: fixed;
             left: 50%;
@@ -120,6 +142,8 @@
 
     <div id="error"></div>
 
+    <div id="controls-hint">CLICK TO LOCK MOUSE &nbsp;|&nbsp; WASD MOVE &nbsp;|&nbsp; SPACE UP &nbsp;|&nbsp; SHIFT DOWN</div>
+
     <div id="crosshair"></div>
 
     <div id="hud">
@@ -145,6 +169,17 @@
             let renderer;
             let terrain;
             let animationStarted = false;
+
+            const keys = Object.create(null);
+            let pointerLocked = false;
+
+            const movement = {
+                speed: 18,
+                verticalSpeed: 14,
+                sensitivity: 0.0022,
+                yaw: 0,
+                pitch: 0
+            };
 
             function showError(message) {
                 loading.classList.add("hidden");
@@ -174,9 +209,12 @@
                     5000
                 );
 
-                // Start slightly above the central seafloor.
+                // First-person starting position.
                 camera.position.set(0, 12, 80);
-                camera.lookAt(0, -5, -180);
+
+                movement.yaw = 0;
+                movement.pitch = -0.05;
+                updateCameraRotation();
 
                 renderer = new THREE.WebGLRenderer({
                     antialias: true,
@@ -228,6 +266,8 @@
                     camera,
                     material: terrainMaterial
                 });
+
+                setupControls();
 
                 // Add a visible surface reference far above the player so the world
                 // has a strong sense of vertical scale.
@@ -292,27 +332,112 @@
                 );
 
                 let time = 0;
+                const clock = new THREE.Clock();
+
+                function updateCameraRotation() {
+                    const limit = Math.PI * 0.49;
+                    movement.pitch = Math.max(-limit, Math.min(limit, movement.pitch));
+
+                    camera.rotation.order = "YXZ";
+                    camera.rotation.y = movement.yaw;
+                    camera.rotation.x = movement.pitch;
+                }
+
+                function updateMovement(delta) {
+                    const forward = new THREE.Vector3();
+                    const right = new THREE.Vector3();
+                    const up = new THREE.Vector3(0, 1, 0);
+
+                    camera.getWorldDirection(forward);
+                    right.crossVectors(forward, up).normalize();
+
+                    // Swimming is full 3D. Looking up/down changes the W/S travel direction.
+                    const move = new THREE.Vector3();
+
+                    if (keys["KeyW"]) move.add(forward);
+                    if (keys["KeyS"]) move.sub(forward);
+                    if (keys["KeyD"]) move.add(right);
+                    if (keys["KeyA"]) move.sub(right);
+                    if (keys["Space"]) move.add(up);
+                    if (keys["ShiftLeft"] || keys["ShiftRight"]) move.sub(up);
+
+                    if (move.lengthSq() > 0) {
+                        move.normalize();
+
+                        const currentSpeed =
+                            (keys["ShiftLeft"] || keys["ShiftRight"])
+                                ? movement.verticalSpeed
+                                : movement.speed;
+
+                        camera.position.addScaledVector(
+                            move,
+                            currentSpeed * delta
+                        );
+                    }
+                }
 
                 function animate() {
                     requestAnimationFrame(animate);
 
-                    time += 0.016;
+                    const delta = Math.min(
+                        clock.getDelta(),
+                        0.05
+                    );
 
-                    // Very subtle breathing/bobbing while we build the real controller.
-                    camera.position.x = Math.sin(time * 0.55) * 0.35;
-                    camera.position.y =
-                        12 +
-                        Math.sin(time * 0.9) * 0.12;
+                    time += delta;
 
-                    camera.lookAt(0, -5, -180);
+                    updateMovement(delta);
+                    terrain.update(delta);
 
-                    terrain.update(0.016);
-
-                    // Approximate depth from the player's Y position.
                     depthElement.textContent =
                         Math.max(0, Math.round(-camera.position.y)) + " m";
 
                     renderer.render(scene, camera);
+                }
+
+
+                function setupControls() {
+                    const hint = document.getElementById("controls-hint");
+
+                    renderer.domElement.addEventListener("click", () => {
+                        renderer.domElement.requestPointerLock();
+                    });
+
+                    document.addEventListener("pointerlockchange", () => {
+                        pointerLocked =
+                            document.pointerLockElement === renderer.domElement;
+
+                        hint.classList.toggle("hidden", pointerLocked);
+                    });
+
+                    document.addEventListener("mousemove", (event) => {
+                        if (!pointerLocked) return;
+
+                        movement.yaw -= event.movementX * movement.sensitivity;
+                        movement.pitch -= event.movementY * movement.sensitivity;
+
+                        updateCameraRotation();
+                    });
+
+                    window.addEventListener("keydown", (event) => {
+                        keys[event.code] = true;
+
+                        if (
+                            ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)
+                        ) {
+                            event.preventDefault();
+                        }
+                    });
+
+                    window.addEventListener("keyup", (event) => {
+                        keys[event.code] = false;
+                    });
+
+                    window.addEventListener("blur", () => {
+                        for (const key in keys) {
+                            keys[key] = false;
+                        }
+                    });
                 }
 
                 animate();
