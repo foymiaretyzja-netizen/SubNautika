@@ -1,70 +1,26 @@
 // SubNautika World Preset: Water
-// Title-screen ocean:
-// - broad, natural-looking waves
-// - strong but soft sun reflection
-// - Fresnel-style sky reflection
-// - procedural Simplex/Perlin-style whitecaps
-// - snow-like foam concentrated on wave crests
+// Rougher open-ocean title-screen water.
+// The surface uses warped fractal noise + directional swells so it
+// looks like an ocean, not a giant pool or a moving blanket.
+// Includes:
+// - sharp/choppy wave crests
+// - saturated blue/teal water
+// - soft sky reflection
+// - sun glints
+// - procedural snowy whitecaps
 
 window.SubNautikaWater = (() => {
-    let simplex;
-
-    function makeFoamTexture() {
-        const size = 256;
-        const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = size;
-
-        const ctx = canvas.getContext("2d");
-        const image = ctx.createImageData(size, size);
-
-        for (let y = 0; y < size; y++) {
-            for (let x = 0; x < size; x++) {
-                const nx = x / size;
-                const ny = y / size;
-
-                const broad = simplex.noise2D(nx * 3.2, ny * 3.2);
-                const medium = simplex.noise2D(nx * 7.5 + 17, ny * 7.5 + 17) * 0.5;
-                const fine = simplex.noise2D(nx * 18.0 + 73, ny * 18.0 + 73) * 0.18;
-
-                const n = broad + medium + fine;
-                const foam = Math.max(0, Math.min(1, (n + 0.03) * 0.62));
-
-                const i = (y * size + x) * 4;
-                const value = Math.floor(foam * 255);
-
-                image.data[i] = value;
-                image.data[i + 1] = value;
-                image.data[i + 2] = value;
-                image.data[i + 3] = 255;
-            }
-        }
-
-        ctx.putImageData(image, 0, 0);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(8, 8);
-        texture.needsUpdate = true;
-
-        return texture;
-    }
-
     function init(scene) {
-        simplex = new SimplexNoise();
-
-        // More surface detail than the original while keeping the browser load reasonable.
-        const geometry = new THREE.PlaneGeometry(3000, 3000, 190, 190);
+        // Extra subdivisions are important now because the surface contains
+        // sharper, smaller wave features.
+        const geometry = new THREE.PlaneGeometry(3000, 3000, 210, 210);
         geometry.rotateX(-Math.PI / 2);
-
-        const foamTexture = makeFoamTexture();
 
         const material = new THREE.ShaderMaterial({
             transparent: true,
             depthWrite: true,
             uniforms: {
                 uTime: { value: 0 },
-                uFoam: { value: foamTexture },
                 uSunDirection: {
                     value: new THREE.Vector3(-0.65, 0.72, 0.22).normalize()
                 }
@@ -79,77 +35,142 @@ window.SubNautikaWater = (() => {
                 varying float vHeight;
                 varying float vSlope;
 
-                float wave(vec2 p, float t) {
-                    float h = 0.0;
-
-                    // Long rolling swells.
-                    h += sin(p.x * 0.0028 + t * 0.34) * 9.5;
-                    h += cos(p.y * 0.00235 - t * 0.27) * 7.0;
-
-                    // Strong cross-seas create irregular crests.
-                    h += sin((p.x + p.y) * 0.0068 + t * 0.50) * 4.0;
-                    h += cos((p.x - p.y) * 0.0105 - t * 0.43) * 2.8;
-
-                    // Choppier harmonics sharpen the tops instead of making perfect sine hills.
-                    h += sin(p.x * 0.014 + t * 0.82) * 1.15;
-                    h += sin(p.y * 0.019 - t * 0.91) * 0.85;
-                    h += sin((p.x * 0.018) + (p.y * 0.012) + t * 1.08) * 0.65;
-
-                    // Tiny ripples.
-                    h += sin(p.x * 0.043 + p.y * 0.027 + t * 1.45) * 0.28;
-
-                    return h;
+                // Cheap animated 3D value noise for the browser.
+                float hash31(vec3 p) {
+                    p = fract(p * 0.1031);
+                    p += dot(p, p.yzx + 33.33);
+                    return fract((p.x + p.y) * p.z);
                 }
 
-                vec2 derivative(vec2 p, float t) {
-                    float dx = 0.0;
-                    float dy = 0.0;
+                float noise3(vec3 p) {
+                    vec3 i = floor(p);
+                    vec3 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
 
-                    dx += cos(p.x * 0.0028 + t * 0.34) * 9.5 * 0.0028;
-                    dy += -sin(p.y * 0.00235 - t * 0.27) * 7.0 * 0.00235;
+                    float n000 = hash31(i + vec3(0.0, 0.0, 0.0));
+                    float n100 = hash31(i + vec3(1.0, 0.0, 0.0));
+                    float n010 = hash31(i + vec3(0.0, 1.0, 0.0));
+                    float n110 = hash31(i + vec3(1.0, 1.0, 0.0));
+                    float n001 = hash31(i + vec3(0.0, 0.0, 1.0));
+                    float n101 = hash31(i + vec3(1.0, 0.0, 1.0));
+                    float n011 = hash31(i + vec3(0.0, 1.0, 1.0));
+                    float n111 = hash31(i + vec3(1.0, 1.0, 1.0));
 
-                    float a = (p.x + p.y) * 0.0068 + t * 0.50;
-                    dx += cos(a) * 4.0 * 0.0068;
-                    dy += cos(a) * 4.0 * 0.0068;
+                    float nx00 = mix(n000, n100, f.x);
+                    float nx10 = mix(n010, n110, f.x);
+                    float nx01 = mix(n001, n101, f.x);
+                    float nx11 = mix(n011, n111, f.x);
 
-                    float b = (p.x - p.y) * 0.0105 - t * 0.43;
-                    dx += -sin(b) * 2.8 * 0.0105;
-                    dy += sin(b) * 2.8 * 0.0105;
+                    float nxy0 = mix(nx00, nx10, f.y);
+                    float nxy1 = mix(nx01, nx11, f.y);
 
-                    float c = p.x * 0.014 + t * 0.82;
-                    dx += cos(c) * 1.15 * 0.014;
+                    return mix(nxy0, nxy1, f.z) * 2.0 - 1.0;
+                }
 
-                    float d = p.y * 0.019 - t * 0.91;
-                    dy += -sin(d) * 0.85 * 0.019;
+                float fbm(vec3 p) {
+                    float value = 0.0;
+                    float amp = 0.58;
 
-                    float e = p.x * 0.018 + p.y * 0.012 + t * 1.08;
-                    dx += cos(e) * 0.65 * 0.018;
-                    dy += cos(e) * 0.65 * 0.012;
+                    value += noise3(p) * amp;
+                    p = p * 2.03 + vec3(17.0, 9.0, 13.0);
+                    amp *= 0.5;
 
-                    float f = p.x * 0.043 + p.y * 0.027 + t * 1.45;
-                    dx += cos(f) * 0.28 * 0.043;
-                    dy += cos(f) * 0.28 * 0.027;
+                    value += noise3(p) * amp;
+                    p = p * 2.01 + vec3(31.0, 14.0, 21.0);
+                    amp *= 0.5;
 
-                    return vec2(dx, dy);
+                    value += noise3(p) * amp;
+                    p = p * 2.07 + vec3(53.0, 27.0, 8.0);
+                    amp *= 0.5;
+
+                    value += noise3(p) * amp;
+
+                    return value;
+                }
+
+                float oceanHeight(vec2 p, float t) {
+                    // Big open-ocean swells.
+                    float swellA = sin(p.x * 0.00255 + t * 0.34);
+                    float swellB = sin(p.y * 0.00215 - t * 0.29);
+                    float swellC = sin((p.x + p.y) * 0.0048 + t * 0.43);
+
+                    // Domain warp makes the swells bend and wander.
+                    vec3 warpSample = vec3(
+                        p.x * 0.00135 + 4.0,
+                        p.y * 0.00135 - 9.0,
+                        t * 0.075
+                    );
+
+                    float warpX = fbm(warpSample) * 95.0;
+                    float warpY = fbm(warpSample + vec3(19.0, -7.0, 11.0)) * 95.0;
+
+                    vec2 warped = p + vec2(warpX, warpY);
+
+                    float n = fbm(vec3(
+                        warped.x * 0.00235,
+                        warped.y * 0.00235,
+                        t * 0.085
+                    ));
+
+                    // Sharpen the noise so we get actual crests instead of
+                    // rounded hills.
+                    float sharp = sign(n) * pow(abs(n), 0.62);
+
+                    // Medium/choppy structure.
+                    float chop = fbm(vec3(
+                        p.x * 0.0082,
+                        p.y * 0.0082,
+                        t * 0.17 + 31.0
+                    ));
+
+                    float directional = sin(
+                        p.x * 0.016 +
+                        p.y * 0.010 +
+                        t * 1.05 +
+                        n * 2.2
+                    );
+
+                    float height = 0.0;
+
+                    height += swellA * 7.5;
+                    height += swellB * 6.0;
+                    height += swellC * 3.4;
+
+                    height += sharp * 7.8;
+                    height += chop * 2.4;
+                    height += directional * 0.9;
+
+                    // Slightly exaggerate positive crests.
+                    float crestBoost = max(height, 0.0);
+                    height += crestBoost * crestBoost * 0.012;
+
+                    return height;
                 }
 
                 void main() {
                     vUv = uv;
 
                     vec3 p = position;
-                    float h = wave(p.xz, uTime);
-                    vec2 d = derivative(p.xz, uTime);
+                    float h = oceanHeight(p.xz, uTime);
+
+                    // Numerical surface gradient. This is what makes the
+                    // lighting actually follow the rough wave shape.
+                    float e = 1.35;
+                    float hx = oceanHeight(p.xz + vec2(e, 0.0), uTime);
+                    float hz = oceanHeight(p.xz + vec2(0.0, e), uTime);
 
                     p.y += h;
 
-                    vec3 localNormal = normalize(vec3(-d.x, 1.0, -d.y));
+                    float dx = (hx - h) / e;
+                    float dz = (hz - h) / e;
 
+                    vec3 localNormal = normalize(vec3(-dx, 1.0, -dz));
                     vec4 world = modelMatrix * vec4(p, 1.0);
 
                     vWorldPosition = world.xyz;
                     vNormal = normalize(normalMatrix * localNormal);
                     vHeight = h;
-                    vSlope = length(d);
+                    vSlope = length(vec2(dx, dz));
 
                     gl_Position = projectionMatrix * viewMatrix * world;
                 }
@@ -157,7 +178,6 @@ window.SubNautikaWater = (() => {
 
             fragmentShader: `
                 uniform float uTime;
-                uniform sampler2D uFoam;
                 uniform vec3 uSunDirection;
 
                 varying vec3 vWorldPosition;
@@ -169,14 +189,22 @@ window.SubNautikaWater = (() => {
                 vec3 skyColor(vec3 dir) {
                     float h = clamp(dir.y * 0.5 + 0.5, 0.0, 1.0);
 
-                    vec3 horizon = vec3(0.72, 0.82, 0.88);
-                    vec3 middle = vec3(0.32, 0.52, 0.68);
-                    vec3 upper = vec3(0.12, 0.27, 0.43);
+                    // Keep the reflection blue/teal so the ocean does not turn gray.
+                    vec3 horizon = vec3(0.44, 0.70, 0.78);
+                    vec3 middle = vec3(0.14, 0.36, 0.55);
+                    vec3 upper = vec3(0.035, 0.14, 0.28);
 
-                    vec3 sky = mix(horizon, middle, smoothstep(0.12, 0.60, h));
-                    sky = mix(sky, upper, smoothstep(0.60, 1.0, h));
+                    vec3 sky = mix(
+                        horizon,
+                        middle,
+                        smoothstep(0.10, 0.58, h)
+                    );
 
-                    return sky;
+                    return mix(
+                        sky,
+                        upper,
+                        smoothstep(0.58, 1.0, h)
+                    );
                 }
 
                 void main() {
@@ -186,71 +214,91 @@ window.SubNautikaWater = (() => {
 
                     float facing = max(dot(N, V), 0.0);
 
-                    // This is the part that should make the water stop looking dead.
-                    float fresnel = 0.035 + pow(1.0 - facing, 3.6) * 0.82;
+                    // Fresnel gives the horizon a visible reflection without
+                    // turning the entire ocean into a mirror.
+                    float fresnel = 0.025 + pow(1.0 - facing, 3.0) * 0.78;
 
-                    vec3 deep = vec3(0.004, 0.045, 0.078);
-                    vec3 ocean = vec3(0.012, 0.13, 0.20);
+                    // More saturated base colors restore the old title-screen
+                    // blue instead of washing everything into pale gray-blue.
+                    vec3 deepBlue = vec3(0.002, 0.035, 0.085);
+                    vec3 richBlue = vec3(0.005, 0.105, 0.20);
+                    vec3 crestBlue = vec3(0.01, 0.18, 0.27);
 
-                    float heightTint = smoothstep(-11.0, 11.0, vHeight);
-                    vec3 base = mix(deep, ocean, heightTint * 0.42);
+                    float heightMix = smoothstep(-13.0, 13.0, vHeight);
+                    vec3 base = mix(deepBlue, richBlue, heightMix);
 
-                    // Fake reflected sky, but shaped by the actual wave normal.
-                    vec3 reflectionDirection = reflect(-V, N);
-                    vec3 reflectedSky = skyColor(reflectionDirection);
+                    // Brighter angled surfaces help define individual waves.
+                    float faceLight = smoothstep(
+                        0.32,
+                        0.92,
+                        dot(N, normalize(vec3(-0.25, 0.9, 0.35))) * 0.5 + 0.5
+                    );
 
-                    base = mix(base, reflectedSky, fresnel * 0.52);
+                    base = mix(base, crestBlue, faceLight * 0.34);
 
-                    // Horizon glow.
-                    base += vec3(0.02, 0.09, 0.12) * pow(1.0 - facing, 2.0) * 0.30;
+                    // Reflected sky.
+                    vec3 reflectedDirection = reflect(-V, N);
+                    vec3 reflectedSky = skyColor(reflectedDirection);
 
-                    // Broad sun reflection + tight glints.
+                    base = mix(base, reflectedSky, fresnel * 0.42);
+
+                    // Sun streaks that break across rough wave faces.
                     vec3 H = normalize(V + L);
 
-                    float broad = pow(max(dot(N, H), 0.0), 18.0);
-                    float sparkle = pow(max(dot(N, H), 0.0), 120.0);
+                    float broad = pow(max(dot(N, H), 0.0), 16.0);
+                    float glint = pow(max(dot(N, H), 0.0), 95.0);
 
-                    base += vec3(0.22, 0.50, 0.58) * broad * 0.15;
-                    base += vec3(0.78, 0.94, 0.96) * sparkle * 0.72;
+                    base += vec3(0.04, 0.28, 0.38) * broad * 0.26;
+                    base += vec3(0.58, 0.88, 0.92) * glint * 0.62;
 
                     // ----------------------------------------------------
-                    // Snowy foam / whitecaps.
-                    // Wave crests + slope decide where foam is allowed.
-                    // Simplex texture then breaks it into natural patches.
+                    // Snowy ocean foam / whitecaps.
+                    // Sharp wave peaks + steep slopes control the mask.
                     // ----------------------------------------------------
-                    vec2 foamUv = vUv * 8.0;
-                    foamUv += vec2(uTime * 0.0017, -uTime * 0.0009);
 
-                    float noise = texture2D(uFoam, foamUv).r;
+                    vec2 foamUv = vUv * 10.0;
 
-                    float crest = smoothstep(3.0, 8.5, vHeight);
-                    float slope = smoothstep(0.07, 0.22, vSlope);
+                    float foamNoise = 0.5 + 0.5 * sin(
+                        foamUv.x * 2.6 +
+                        sin(foamUv.y * 1.8 + uTime * 0.003)
+                    );
 
-                    float foamMask = crest * slope;
-                    foamMask *= smoothstep(0.35, 0.66, noise);
+                    float foamBreak = 0.5 + 0.5 * sin(
+                        foamUv.y * 7.0 -
+                        foamUv.x * 3.4 -
+                        uTime * 0.004
+                    );
 
-                    // Small fragmented edge foam.
-                    float breakup = texture2D(
-                        uFoam,
-                        foamUv * 1.75 + vec2(-uTime * 0.0008, uTime * 0.0011)
-                    ).r;
+                    float crest = smoothstep(4.5, 10.0, vHeight);
+                    float steep = smoothstep(0.075, 0.26, vSlope);
 
-                    foamMask *= mix(0.58, 1.0, breakup);
+                    float foam = crest * steep;
+                    foam *= smoothstep(0.45, 0.75, foamNoise);
+                    foam *= mix(0.64, 1.0, foamBreak);
 
-                    vec3 snowyFoam = vec3(0.84, 0.94, 0.95);
-                    base = mix(base, snowyFoam, clamp(foamMask * 0.88, 0.0, 0.82));
+                    // A little foam can form just below the crest too.
+                    float shoulder = smoothstep(7.0, 2.5, abs(vHeight - 5.5));
+                    foam += shoulder * steep * 0.09;
 
-                    // Foam catches light too.
-                    float foamLight = pow(max(dot(N, H), 0.0), 28.0) * foamMask;
-                    base += vec3(0.65, 0.82, 0.84) * foamLight * 0.26;
+                    vec3 snow = vec3(0.88, 0.97, 0.98);
 
-                    gl_FragColor = vec4(base, 0.90);
+                    base = mix(
+                        base,
+                        snow,
+                        clamp(foam * 0.88, 0.0, 0.82)
+                    );
+
+                    // Whitecaps catch the sun and sparkle.
+                    float foamGlint = pow(max(dot(N, H), 0.0), 30.0) * foam;
+                    base += vec3(0.7, 0.9, 0.92) * foamGlint * 0.28;
+
+                    gl_FragColor = vec4(base, 0.965);
                 }
             `
         });
 
         const water = new THREE.Mesh(geometry, material);
-        water.name = "ProceduralOcean";
+        water.name = "ProceduralRoughOcean";
         scene.add(water);
 
         return {
@@ -258,8 +306,6 @@ window.SubNautikaWater = (() => {
 
             update(time) {
                 material.uniforms.uTime.value = time;
-                foamTexture.offset.x = time * 0.00055;
-                foamTexture.offset.y = -time * 0.00028;
             }
         };
     }
