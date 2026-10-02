@@ -1,50 +1,48 @@
 // SubNautika World Preset entry point.
-// Future systems such as terrain, resource spawning, weather, and volumetric
-// clouds can be added here without turning index.html into a giant game file.
+// This file owns the 3D world. Additional systems can be plugged in here:
+// water, clouds, resource generation, weather, terrain, etc.
 
 window.SubNautikaWorld = (() => {
     let scene, camera, renderer, water, clouds;
     let time = 0;
 
-    function createSky(scene) {
-        const canvas = document.createElement("canvas");
-        canvas.width = 2;
-        canvas.height = 512;
-        const ctx = canvas.getContext("2d");
-        const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-        gradient.addColorStop(0, "#416b91");
-        gradient.addColorStop(0.50, "#88aabd");
-        gradient.addColorStop(1, "#d2e1e7");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 2, 512);
-        scene.background = new THREE.CanvasTexture(canvas);
-    }
-
     function init(container) {
         scene = new THREE.Scene();
-        createSky(scene);
 
         camera = new THREE.PerspectiveCamera(
-            55,
+            60,
             window.innerWidth / window.innerHeight,
-            0.1,
-            5000
+            1,
+            10000
         );
-        camera.position.set(0, 45, 160);
-        camera.lookAt(0, 15, -100);
+        camera.position.set(0, 40, 150);
+        camera.lookAt(0, 0, -200);
 
-        renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Transparent renderer lets the UI page's soft sky gradient show through.
+        renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+
+        renderer.setClearColor(0x000000, 0);
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+        // Three.js r128 uses outputEncoding.
+        if ("outputEncoding" in renderer) {
+            renderer.outputEncoding = THREE.sRGBEncoding;
+        }
+
         container.appendChild(renderer.domElement);
 
-        scene.fog = new THREE.Fog(0xd2e1e7, 180, 1150);
+        // The old Exp2 fog gave the horizon much more depth than a hard color fade.
+        scene.fog = new THREE.FogExp2(0xb8d0e0, 0.001);
 
-        scene.add(new THREE.HemisphereLight(0xc8e8f4, 0x082536, 0.65));
+        // Lighting is deliberately closer to the old title screen.
+        scene.add(new THREE.AmbientLight(0x404040, 1.2));
 
-        const sun = new THREE.DirectionalLight(0xffffff, 1.25);
-        sun.position.set(120, 220, -160);
+        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+        sun.position.set(-100, 100, 50);
         scene.add(sun);
 
         water = SubNautikaWater.init(scene);
@@ -56,10 +54,16 @@ window.SubNautikaWorld = (() => {
 
     function animate() {
         requestAnimationFrame(animate);
-        time += 1;
+
+        // Same slow, calm rhythm as the old title screen.
+        time += 0.002;
 
         water.update(time);
         clouds.update(time);
+
+        // Gentle camera drift adds parallax to the wave field.
+        camera.position.x = Math.sin(time) * 30;
+        camera.lookAt(0, 0, -200);
 
         renderer.render(scene, camera);
     }
