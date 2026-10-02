@@ -53,16 +53,32 @@
             letter-spacing: 1.5px;
         }
 
+        #error {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: min(680px, 86vw);
+            padding: 22px;
+            box-sizing: border-box;
+            background: rgba(20, 0, 5, 0.92);
+            border: 1px solid rgba(255, 100, 120, 0.7);
+            color: #ffd9de;
+            z-index: 30;
+            display: none;
+            line-height: 1.5;
+        }
+
         #crosshair {
             position: fixed;
             left: 50%;
             top: 50%;
-            width: 4px;
-            height: 4px;
+            width: 5px;
+            height: 5px;
             transform: translate(-50%, -50%);
-            border: 1px solid rgba(210, 250, 255, 0.8);
+            border: 1px solid rgba(210, 250, 255, 0.9);
             border-radius: 50%;
-            box-shadow: 0 0 6px rgba(100, 230, 245, 0.5);
+            box-shadow: 0 0 8px rgba(100, 230, 245, 0.55);
             z-index: 10;
             pointer-events: none;
         }
@@ -102,123 +118,232 @@
         </div>
     </div>
 
+    <div id="error"></div>
+
     <div id="crosshair"></div>
 
     <div id="hud">
         <div class="hud-card">
-            DEPTH <span id="depth">0 m</span>
+            DEPTH <span id="depth">15 m</span>
             &nbsp;&nbsp;|&nbsp;&nbsp;
             OXYGEN <span id="oxygen">100%</span>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../code/terrain.js"></script>
 
     <script>
-        const container = document.getElementById("game");
-        const depthElement = document.getElementById("depth");
+        (() => {
+            const container = document.getElementById("game");
+            const depthElement = document.getElementById("depth");
+            const loading = document.getElementById("loading");
+            const errorElement = document.getElementById("error");
 
-        const scene = new THREE.Scene();
+            let scene;
+            let camera;
+            let renderer;
+            let terrain;
+            let animationStarted = false;
 
-        const camera = new THREE.PerspectiveCamera(
-            75,
-            window.innerWidth / window.innerHeight,
-            0.05,
-            4000
-        );
+            function showError(message) {
+                loading.classList.add("hidden");
+                errorElement.style.display = "block";
+                errorElement.textContent = "SubNautika could not start: " + message;
+            }
 
-        camera.position.set(0, 3, 12);
-        camera.lookAt(0, 2, -100);
+            try {
+                if (!window.THREE) {
+                    throw new Error("Three.js did not load.");
+                }
 
-        const renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            alpha: false
-        });
+                if (!window.SubNautikaTerrain) {
+                    throw new Error("terrain.js did not load. Check the Systems/../code/ path.");
+                }
 
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.outputEncoding = THREE.sRGBEncoding;
-        container.appendChild(renderer.domElement);
+                scene = new THREE.Scene();
 
-        // Temporary underwater world foundation.
-        // This will be replaced by the real terrain, player, creatures,
-        // resources, lighting, and water systems as the game grows.
-        scene.background = new THREE.Color(0x032431);
-        scene.fog = new THREE.FogExp2(0x032431, 0.025);
+                // A layered underwater atmosphere makes the 3D terrain silhouette readable.
+                scene.background = new THREE.Color(0x043747);
+                scene.fog = new THREE.FogExp2(0x043747, 0.011);
 
-        scene.add(new THREE.HemisphereLight(0x5bc9d8, 0x001016, 0.8));
+                camera = new THREE.PerspectiveCamera(
+                    72,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    5000
+                );
 
-        const sun = new THREE.DirectionalLight(0x8debf3, 0.45);
-        sun.position.set(-100, 150, 40);
-        scene.add(sun);
+                // Start slightly above the central seafloor.
+                camera.position.set(0, 12, 80);
+                camera.lookAt(0, -5, -180);
 
-        // Simple deep-ocean floor placeholder.
-        const floorGeometry = new THREE.PlaneGeometry(1000, 1000, 32, 32);
-        floorGeometry.rotateX(-Math.PI / 2);
+                renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: false
+                });
 
-        const floorMaterial = new THREE.MeshLambertMaterial({
-            color: 0x123c41
-        });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-        floor.position.y = -30;
-        scene.add(floor);
+                if ("outputEncoding" in renderer) {
+                    renderer.outputEncoding = THREE.sRGBEncoding;
+                }
 
-        // A few placeholder particles give the underwater scene some depth.
-        const particleCount = 1800;
-        const particles = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
+                container.appendChild(renderer.domElement);
 
-        for (let i = 0; i < particleCount; i++) {
-            const i3 = i * 3;
-            positions[i3] = (Math.random() - 0.5) * 500;
-            positions[i3 + 1] = Math.random() * 180 - 40;
-            positions[i3 + 2] = (Math.random() - 0.5) * 800;
-        }
+                // Underwater lighting.
+                scene.add(new THREE.HemisphereLight(
+                    0x66d8e6,
+                    0x001016,
+                    1.1
+                ));
 
-        particles.setAttribute(
-            "position",
-            new THREE.BufferAttribute(positions, 3)
-        );
+                const underwaterSun = new THREE.DirectionalLight(
+                    0x8cecf2,
+                    0.75
+                );
 
-        const particleMaterial = new THREE.PointsMaterial({
-            color: 0x9de9e7,
-            size: 0.16,
-            transparent: true,
-            opacity: 0.38,
-            depthWrite: false
-        });
+                underwaterSun.position.set(-180, 220, 100);
+                scene.add(underwaterSun);
 
-        scene.add(new THREE.Points(particles, particleMaterial));
+                // Large soft blue point of light near the surface.
+                const surfaceGlow = new THREE.PointLight(
+                    0x46d9ea,
+                    1.5,
+                    900
+                );
 
-        let time = 0;
+                surfaceGlow.position.set(0, 80, 40);
+                scene.add(surfaceGlow);
 
-        function animate() {
-            requestAnimationFrame(animate);
+                const terrainMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x17484a,
+                    roughness: 0.96,
+                    metalness: 0.0
+                });
 
-            time += 0.002;
+                terrain = SubNautikaTerrain.init({
+                    scene,
+                    camera,
+                    material: terrainMaterial
+                });
 
-            // Gentle camera bob for now.
-            camera.position.x = Math.sin(time * 0.8) * 0.12;
-            camera.position.y = 3 + Math.sin(time * 1.3) * 0.05;
-            camera.lookAt(0, 2, -100);
+                // Add a visible surface reference far above the player so the world
+                // has a strong sense of vertical scale.
+                const surfaceGeometry = new THREE.CircleGeometry(900, 96);
+                const surfaceMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x268da0,
+                    transparent: true,
+                    opacity: 0.12,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
 
-            depthElement.textContent = "0 m";
+                const surface = new THREE.Mesh(
+                    surfaceGeometry,
+                    surfaceMaterial
+                );
 
-            renderer.render(scene, camera);
-        }
+                surface.rotation.x = -Math.PI / 2;
+                surface.position.y = 42;
+                scene.add(surface);
 
-        animate();
+                // Floating particulate matter.
+                const particleCount = 2200;
+                const particlePositions = new Float32Array(particleCount * 3);
 
-        requestAnimationFrame(() => {
-            document.getElementById("loading").classList.add("hidden");
-        });
+                for (let i = 0; i < particleCount; i++) {
+                    const n = i * 3;
 
-        window.addEventListener("resize", () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+                    particlePositions[n] =
+                        (Math.random() - 0.5) * 1000;
+
+                    particlePositions[n + 1] =
+                        Math.random() * 200 - 50;
+
+                    particlePositions[n + 2] =
+                        (Math.random() - 0.5) * 1300;
+                }
+
+                const particleGeometry = new THREE.BufferGeometry();
+
+                particleGeometry.setAttribute(
+                    "position",
+                    new THREE.BufferAttribute(
+                        particlePositions,
+                        3
+                    )
+                );
+
+                const particleMaterial = new THREE.PointsMaterial({
+                    color: 0x9fe8eb,
+                    size: 0.11,
+                    transparent: true,
+                    opacity: 0.32,
+                    depthWrite: false
+                });
+
+                scene.add(
+                    new THREE.Points(
+                        particleGeometry,
+                        particleMaterial
+                    )
+                );
+
+                let time = 0;
+
+                function animate() {
+                    requestAnimationFrame(animate);
+
+                    time += 0.016;
+
+                    // Very subtle breathing/bobbing while we build the real controller.
+                    camera.position.x = Math.sin(time * 0.55) * 0.35;
+                    camera.position.y =
+                        12 +
+                        Math.sin(time * 0.9) * 0.12;
+
+                    camera.lookAt(0, -5, -180);
+
+                    terrain.update(0.016);
+
+                    // Approximate depth from the player's Y position.
+                    depthElement.textContent =
+                        Math.max(0, Math.round(-camera.position.y)) + " m";
+
+                    renderer.render(scene, camera);
+                }
+
+                animate();
+                animationStarted = true;
+
+                setTimeout(() => {
+                    loading.classList.add("hidden");
+                }, 450);
+
+            } catch (error) {
+                console.error(error);
+                showError(error.message || String(error));
+            }
+
+            window.addEventListener("resize", () => {
+                if (!camera || !renderer) {
+                    return;
+                }
+
+                camera.aspect =
+                    window.innerWidth /
+                    window.innerHeight;
+
+                camera.updateProjectionMatrix();
+
+                renderer.setSize(
+                    window.innerWidth,
+                    window.innerHeight
+                );
+            });
+        })();
     </script>
 </body>
 </html>
